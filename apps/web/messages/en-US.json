@@ -1,0 +1,31 @@
+{
+  "meta": {
+    "title": "Social Publisher",
+    "description": "Reliable, diagnosable multi-platform publishing"
+  },
+  "nav": {
+    "overview": "Overview",
+    "compose": "Create",
+    "publications": "Publications",
+    "accounts": "Social accounts",
+    "credentials": "Credentials",
+    "diagnostics": "Diagnostics"
+  },
+  "header": { "environment": "Development", "language": "中文", "newPost": "New publication" },
+  "dashboard": {
+    "eyebrow": "Operations console",
+    "title": "Publishing is healthy today",
+    "subtitle": "Monitor connections, queues, and outcomes across Instagram, Facebook, and X.",
+    "published": "Published today",
+    "scheduled": "Scheduled",
+    "attention": "Needs attention",
+    "successRate": "7-day success rate",
+    "platformHealth": "Platform connections",
+    "recent": "Recent publications",
+    "viewAll": "View all",
+    "healthy": "Healthy",
+    "reauthorize": "Reauthorization needed",
+    "empty": "This foundation uses demo data. Live jobs appear here after persistence is connected."
+  },
+  "status": { "published": "Published", "scheduled": "Scheduled", "failed": "Failed" }
+}
