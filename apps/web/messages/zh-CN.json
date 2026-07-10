@@ -8,7 +8,12 @@
     "credentials": "凭据中心",
     "diagnostics": "诊断中心"
   },
-  "header": { "environment": "开发环境", "language": "English", "newPost": "创建发布" },
+  "header": {
+    "environment": "开发环境",
+    "language": "English",
+    "signIn": "登录",
+    "newPost": "创建发布"
+  },
   "dashboard": {
     "eyebrow": "运营控制台",
     "title": "今天的发布系统运行稳定",

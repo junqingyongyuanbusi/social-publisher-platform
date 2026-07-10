@@ -10,7 +10,9 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@social/auth": "workspace:*",
     "@social/i18n": "workspace:*",
+    "ioredis": "5.11.1",
     "next": "16.2.10",
     "next-intl": "4.12.0",
     "react": "19.2.7",

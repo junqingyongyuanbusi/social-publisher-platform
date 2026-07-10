@@ -66,9 +66,31 @@ GET /api/v1/workspaces/{workspaceId}/identity/me
 
 ## Browser session boundary
 
-The management UI must use Authorization Code with PKCE and a server-managed, encrypted, `HttpOnly`, `Secure`, `SameSite` session cookie. Tokens must not be stored in `localStorage`. Cookie-authenticated mutations require CSRF protection.
+The management UI uses Authorization Code with PKCE. Each login creates fresh state, nonce, and verifier values stored in a one-time encrypted Redis transaction with a ten-minute TTL.
 
-This API PR establishes bearer-token validation and authorization. The browser BFF/session implementation remains separate so credential CRUD is not exposed before both boundaries are complete.
+After callback validation, the browser receives only a cryptographically random 256-bit opaque session ID in an `HttpOnly`, `Secure` (production), `SameSite=Lax` cookie. Access, refresh, and ID tokens are encrypted before Redis persistence and are never returned by the session endpoint or stored in `localStorage`.
+
+Session records are bound to their opaque ID through AES-256-GCM AAD. The key ring supports a new active key while retaining previous decryption keys during rotation.
+
+Access tokens are refreshed before expiry under a short Redis distributed lock. Refresh-token rotation is persisted atomically with the new access token; refresh failure deletes the session and fails closed.
+
+Cookie-authenticated mutations require both:
+
+- an exact configured Origin match; and
+- a double-submit CSRF token whose digest is also bound inside the encrypted server session.
+
+Login return paths must be local absolute paths and cannot begin with `//`, contain backslashes, or exceed the configured limit.
+
+Browser endpoints:
+
+```text
+GET  /api/auth/login
+GET  /api/auth/callback
+GET  /api/auth/session
+POST /api/auth/logout
+```
+
+The browser endpoints establish the session boundary. Credential CRUD remains disabled until browser end-to-end tests and an identity-provider claim-mapping runbook are complete.
 
 ## References
 

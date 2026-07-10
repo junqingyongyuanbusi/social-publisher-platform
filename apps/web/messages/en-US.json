@@ -11,7 +11,12 @@
     "credentials": "Credentials",
     "diagnostics": "Diagnostics"
   },
-  "header": { "environment": "Development", "language": "中文", "newPost": "New publication" },
+  "header": {
+    "environment": "Development",
+    "language": "中文",
+    "signIn": "Sign in",
+    "newPost": "New publication"
+  },
   "dashboard": {
     "eyebrow": "Operations console",
     "title": "Publishing is healthy today",

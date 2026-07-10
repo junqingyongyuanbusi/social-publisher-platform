@@ -60,6 +60,9 @@ export default async function Dashboard({ params }: { params: Promise<{ locale: 
           <Link className="pill" href={`/${otherLocale}`}>
             {t('header.language')}
           </Link>
+          <Link className="pill" href={`/api/auth/login?returnTo=/${locale}`}>
+            {t('header.signIn')}
+          </Link>
           <button className="button">＋ {t('header.newPost')}</button>
         </header>
         <div className="content">

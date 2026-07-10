@@ -17,7 +17,8 @@
     "test": "vitest run src"
   },
   "dependencies": {
-    "jose": "6.2.3"
+    "jose": "6.2.3",
+    "openid-client": "6.8.4"
   },
   "devDependencies": {
     "typescript": "5.9.3",
