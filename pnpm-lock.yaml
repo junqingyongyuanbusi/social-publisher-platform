@@ -36,6 +36,9 @@ importers:
       '@nestjs/swagger':
         specifier: 11.4.5
         version: 11.4.5(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28)(reflect-metadata@0.2.2)
+      '@social/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@social/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -123,6 +126,19 @@ importers:
       tsx:
         specifier: 4.21.0
         version: 4.21.0
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: 4.1.10
+        version: 4.1.10(@types/node@22.19.11)(vite@8.1.4(@types/node@22.19.11)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.49.0)(tsx@4.21.0))
+
+  packages/auth:
+    dependencies:
+      jose:
+        specifier: 6.2.3
+        version: 6.2.3
+    devDependencies:
       typescript:
         specifier: 5.9.3
         version: 5.9.3
@@ -2046,6 +2062,9 @@ packages:
   jiti@2.7.0:
     resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
     hasBin: true
+
+  jose@6.2.3:
+    resolution: {integrity: sha512-YYVDInQKFJfR/xa3ojUTl8c2KoTwiL1R5Wg9YCydwH0x0B9grbzlg5HC7mMjCtUJjbQ/YnGEZIhI5tCgfTb4Hw==}
 
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
@@ -4577,6 +4596,8 @@ snapshots:
       supports-color: 8.1.1
 
   jiti@2.7.0: {}
+
+  jose@6.2.3: {}
 
   js-tokens@4.0.0: {}
 

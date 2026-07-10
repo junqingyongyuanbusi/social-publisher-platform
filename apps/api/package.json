@@ -14,6 +14,7 @@
     "@nestjs/core": "11.1.28",
     "@nestjs/platform-express": "11.1.28",
     "@nestjs/swagger": "11.4.5",
+    "@social/auth": "workspace:*",
     "@social/contracts": "workspace:*",
     "@social/domain": "workspace:*",
     "@social/platform-contract": "workspace:*",

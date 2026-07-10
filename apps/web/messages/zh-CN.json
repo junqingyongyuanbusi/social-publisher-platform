@@ -24,5 +24,6 @@
     "reauthorize": "需重新授权",
     "empty": "首个版本使用演示数据；接入数据库后将在这里显示实时任务。"
   },
-  "status": { "published": "已发布", "scheduled": "已排期", "failed": "失败" }
+  "status": { "published": "已发布", "scheduled": "已排期", "failed": "失败" },
+  "errors": { "authenticationRequired": "请先登录", "permissionDenied": "你没有执行此操作的权限" }
 }

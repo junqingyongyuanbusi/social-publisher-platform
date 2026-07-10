@@ -31,16 +31,38 @@ export class ProblemDetailsFilter implements ExceptionFilter {
     }
 
     const status = exception instanceof HttpException ? exception.getStatus() : 500;
+    const code =
+      status === 401
+        ? 'auth.unauthorized'
+        : status === 403
+          ? 'auth.forbidden'
+          : status === 500
+            ? 'internal.unexpected'
+            : 'http.error';
     response
       .status(status)
       .type('application/problem+json')
       .json({
-        type: 'https://social-publisher.dev/problems/internal',
-        title: status === 500 ? 'errors.internal' : 'errors.http',
+        type: `https://social-publisher.dev/problems/${code}`,
+        title:
+          status === 401
+            ? 'errors.authenticationRequired'
+            : status === 403
+              ? 'errors.permissionDenied'
+              : status === 500
+                ? 'errors.internal'
+                : 'errors.http',
         status,
-        detail: status === 500 ? 'An unexpected error occurred' : String(exception),
+        detail:
+          status === 401
+            ? 'Authentication is required'
+            : status === 403
+              ? 'Permission denied'
+              : status === 500
+                ? 'An unexpected error occurred'
+                : 'The request could not be completed',
         instance: request.originalUrl,
-        code: status === 500 ? 'internal.unexpected' : 'http.error',
+        code,
         requestId,
       });
   }

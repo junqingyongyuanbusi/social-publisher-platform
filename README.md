@@ -18,6 +18,7 @@
 - PostgreSQL/Prisma 数据模型；
 - Redis/BullMQ 基础设施；
 - AES-256-GCM 信封加密凭据保险库核心；
+- 通用 OIDC Access Token 验证与 Workspace RBAC；
 - Docker Compose；
 - GitHub Actions CI。
 
@@ -48,4 +49,6 @@ The repository is in the foundation phase. Real OAuth credentials and publishing
 
 Never commit platform secrets or user tokens. Copy `.env.example` to `.env` for local-only values. Please report vulnerabilities according to [SECURITY.md](SECURITY.md).
 
-Credential encryption and key-provider requirements are documented in [docs/security/credential-vault.md](docs/security/credential-vault.md). Credential CRUD is not exposed until authentication and workspace RBAC are implemented.
+Credential encryption and key-provider requirements are documented in [docs/security/credential-vault.md](docs/security/credential-vault.md). Credential CRUD is not exposed until the browser session, CSRF protection, and workspace RBAC boundary are complete.
+
+API identity claims, role permissions, and route defaults are documented in [docs/security/authentication.md](docs/security/authentication.md).

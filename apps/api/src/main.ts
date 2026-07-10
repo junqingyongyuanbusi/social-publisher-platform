@@ -18,13 +18,15 @@ async function bootstrap(): Promise<void> {
   });
   app.useGlobalFilters(new ProblemDetailsFilter());
 
-  const config = new DocumentBuilder()
-    .setTitle('Social Publisher API')
-    .setDescription('Versioned API for Instagram, Facebook Pages, and X publishing')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, config));
+  if (process.env['NODE_ENV'] !== 'production' || process.env['ENABLE_SWAGGER'] === 'true') {
+    const config = new DocumentBuilder()
+      .setTitle('Social Publisher API')
+      .setDescription('Versioned API for Instagram, Facebook Pages, and X publishing')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, config));
+  }
 
   await app.listen(Number(process.env['API_PORT'] ?? 3001));
 }

@@ -1,17 +1,20 @@
 import { Body, Controller, HttpCode, Module, Post } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { createPublicationSchema } from '@social/contracts';
 import { DomainProblem } from '@social/domain';
 import { PlatformRegistry } from '../platforms/platform-registry.service.js';
+import { RequirePermission } from '../auth/auth.decorators.js';
 
 @ApiTags('publications')
-@Controller('publications')
+@ApiBearerAuth()
+@Controller('workspaces/:workspaceId/publications')
 class PublicationsController {
   constructor(private readonly registry: PlatformRegistry) {}
 
   @Post('validate')
   @HttpCode(200)
   @ApiOperation({ summary: 'Validate a publication without creating it' })
+  @RequirePermission('publication.validate')
   validate(@Body() body: unknown) {
     const parsed = createPublicationSchema.safeParse(body);
     if (!parsed.success) {

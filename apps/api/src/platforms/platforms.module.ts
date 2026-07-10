@@ -1,10 +1,12 @@
 import { Controller, Get, Module, Param } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Platform } from '@social/domain';
+import { Public } from '../auth/auth.decorators.js';
 import { PlatformRegistry } from './platform-registry.service.js';
 
 @ApiTags('platforms')
 @Controller('platforms')
+@Public()
 class PlatformsController {
   constructor(private readonly registry: PlatformRegistry) {}
 

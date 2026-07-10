@@ -27,5 +27,9 @@
     "reauthorize": "Reauthorization needed",
     "empty": "This foundation uses demo data. Live jobs appear here after persistence is connected."
   },
-  "status": { "published": "Published", "scheduled": "Scheduled", "failed": "Failed" }
+  "status": { "published": "Published", "scheduled": "Scheduled", "failed": "Failed" },
+  "errors": {
+    "authenticationRequired": "Sign in is required",
+    "permissionDenied": "You do not have permission to perform this action"
+  }
 }

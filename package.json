@@ -14,7 +14,7 @@
     "format:check": "prettier --check .",
     "lint": "pnpm -r --if-present lint",
     "typecheck": "pnpm -r --filter './packages/*' --if-present build && pnpm -r --if-present typecheck",
-    "test": "pnpm -r --if-present test",
+    "test": "pnpm -r --filter './packages/*' --if-present build && pnpm -r --if-present test",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test",
     "db:generate": "pnpm --filter @social/database prisma:generate",
     "db:migrate": "pnpm --filter @social/database prisma:migrate",

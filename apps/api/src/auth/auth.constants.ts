@@ -1,0 +1,4 @@
+export const ACCESS_TOKEN_VERIFIER = Symbol('ACCESS_TOKEN_VERIFIER');
+export const AUTH_PRINCIPAL = Symbol('AUTH_PRINCIPAL');
+export const PUBLIC_ROUTE = Symbol('PUBLIC_ROUTE');
+export const REQUIRED_PERMISSION = Symbol('REQUIRED_PERMISSION');

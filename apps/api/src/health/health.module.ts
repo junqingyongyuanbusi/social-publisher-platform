@@ -1,8 +1,10 @@
 import { Controller, Get, Module } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Public } from '../auth/auth.decorators.js';
 
 @ApiTags('health')
 @Controller('health')
+@Public()
 class HealthController {
   @Get('live')
   @ApiOperation({ summary: 'Process liveness probe' })
