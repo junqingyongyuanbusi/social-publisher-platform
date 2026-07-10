@@ -19,6 +19,8 @@
 - Redis/BullMQ 基础设施；
 - AES-256-GCM 信封加密凭据保险库核心；
 - 通用 OIDC Access Token 验证与 Workspace RBAC；
+- Authorization Code + PKCE 浏览器登录与服务端会话；
+- 受 RBAC、CSRF 和 AWS KMS 保护的双语凭据中心；
 - Docker Compose；
 - GitHub Actions CI。
 
@@ -37,18 +39,20 @@ pnpm dev
 - API: <http://localhost:3001/api/v1>
 - Swagger: <http://localhost:3001/docs>
 
+当前三个平台的真实 OAuth、媒体处理与远程发布执行器仍处于 fail-closed 状态。生产 v1 的范围、里程碑和验收门槛见 [生产路线图](docs/roadmap/production-v1.md)。
+
 ## English
 
 A bilingual social publishing platform for Instagram, Facebook Pages, and X. The project uses a modular monolith architecture with secure credential management, a standards-based REST API, isolated platform adapters, background jobs, observability, and diagnosable errors.
 
 ### Status
 
-The repository is in the foundation phase. Real OAuth credentials and publishing calls are intentionally not included yet. See the roadmap issues and pull requests for incremental delivery.
+The repository is in the secure-foundation phase. Browser OIDC, workspace RBAC, AWS KMS-backed credential management, and the bilingual credential UI are implemented. Platform OAuth, media processing, scheduling, and remote publishing still fail closed. See the [production roadmap](docs/roadmap/production-v1.md).
 
 ### Security
 
 Never commit platform secrets or user tokens. Copy `.env.example` to `.env` for local-only values. Please report vulnerabilities according to [SECURITY.md](SECURITY.md).
 
-Credential encryption and key-provider requirements are documented in [docs/security/credential-vault.md](docs/security/credential-vault.md). Credential CRUD is not exposed until the browser session, CSRF protection, and workspace RBAC boundary are complete.
+Credential encryption and key-provider requirements are documented in [docs/security/credential-vault.md](docs/security/credential-vault.md). Protected credential management is exposed only through the authenticated server BFF; plaintext values are never returned after submission.
 
 API identity claims, role permissions, and route defaults are documented in [docs/security/authentication.md](docs/security/authentication.md).

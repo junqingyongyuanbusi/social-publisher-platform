@@ -2,7 +2,9 @@
 
 ## Status
 
-The cryptographic core is implemented. Public credential CRUD remains deliberately disabled until authenticated principals, workspace membership, and RBAC are implemented. The platform must fail closed if a production KMS provider is unavailable.
+The cryptographic core, protected API, authenticated server BFF, and bilingual management UI are implemented. Credential operations require an authenticated workspace administrator and browser mutations require Origin and CSRF validation. The platform fails closed if a production KMS provider is unavailable.
+
+The generic secret form is a transitional application-secret administration surface. User and Page OAuth grants must be captured by provider callbacks and bound to a specific social account before live publishing is enabled; operators must not use the generic form as a substitute for account OAuth.
 
 ## Security properties
 

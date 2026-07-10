@@ -90,7 +90,7 @@ GET  /api/auth/session
 POST /api/auth/logout
 ```
 
-The browser endpoints establish the session boundary. Credential CRUD remains disabled until browser end-to-end tests and an identity-provider claim-mapping runbook are complete.
+The browser endpoints establish the session boundary. Protected credential management is enabled through the server BFF for workspace administrators. Live platform OAuth and publishing remain disabled until provider callbacks, account-scoped grants, browser end-to-end tests, and an identity-provider claim-mapping runbook are complete.
 
 Authenticated BFF routes forward the server-held access token to `API_INTERNAL_URL`. They never return it to the browser. Credential mutations require the same Origin and CSRF checks as logout before forwarding to the API.
 
