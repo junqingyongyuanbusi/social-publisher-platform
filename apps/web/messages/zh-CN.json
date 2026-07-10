@@ -1,0 +1,72 @@
+{
+  "meta": { "title": "社媒发布平台", "description": "可靠、可诊断的多平台发布系统" },
+  "nav": {
+    "label": "主导航",
+    "overview": "总览",
+    "compose": "创建内容",
+    "publications": "发布任务",
+    "accounts": "社媒账号",
+    "credentials": "凭据中心",
+    "diagnostics": "诊断中心"
+  },
+  "header": {
+    "environment": "开发环境",
+    "language": "English",
+    "signIn": "登录",
+    "newPost": "创建发布"
+  },
+  "dashboard": {
+    "eyebrow": "运营控制台",
+    "title": "今天的发布系统运行稳定",
+    "subtitle": "集中查看 Instagram、Facebook 和 X 的连接、队列和发布结果。",
+    "published": "今日已发布",
+    "scheduled": "等待发布",
+    "attention": "需要处理",
+    "successRate": "7 日成功率",
+    "platformHealth": "平台连接",
+    "recent": "最近发布",
+    "viewAll": "查看全部",
+    "healthy": "正常",
+    "reauthorize": "需重新授权",
+    "empty": "首个版本使用演示数据；接入数据库后将在这里显示实时任务。"
+  },
+  "status": { "published": "已发布", "scheduled": "已排期", "failed": "失败" },
+  "credentials": {
+    "eyebrow": "安全控制台",
+    "title": "凭据中心",
+    "subtitle": "安全地新增、轮换和吊销平台凭据。明文只在提交时传输，之后不会再次显示。",
+    "target": "管理范围",
+    "workspace": "工作区",
+    "platformApp": "平台应用",
+    "noWorkspace": "没有可管理的工作区",
+    "noPlatformApp": "没有已配置的平台应用",
+    "addOrRotate": "新增或轮换凭据",
+    "rotationHint": "为相同类型保存新值会创建新版本，并自动停用旧版本。",
+    "type": "凭据类型",
+    "secret": "密钥值",
+    "scopes": "权限范围",
+    "scopesPlaceholder": "以英文逗号分隔，例如 pages_manage_posts",
+    "expiresAt": "过期时间（可选）",
+    "save": "加密并保存",
+    "securityNote": "系统仅显示掩码值。生产环境使用 AWS KMS 信封加密，密钥不会写入浏览器存储或日志。",
+    "versions": "版本历史",
+    "count": "{count} 个版本",
+    "empty": "选择平台应用后，这里会显示凭据版本；当前没有记录。",
+    "version": "版本 {version}",
+    "noScopes": "没有声明权限范围",
+    "created": "创建于",
+    "expires": "过期于",
+    "revoke": "吊销",
+    "confirmRevoke": "确定吊销版本 {version}？此操作不可撤销。",
+    "saved": "凭据已加密保存，新版本已激活。",
+    "revoked": "凭据已吊销。",
+    "loading": "加载中…",
+    "status": {
+      "ACTIVE": "使用中",
+      "SUPERSEDED": "已替换",
+      "REVOKED": "已吊销",
+      "EXPIRED": "已过期"
+    }
+  },
+  "errors": { "authenticationRequired": "请先登录", "permissionDenied": "你没有执行此操作的权限" }
+}

@@ -1,0 +1,78 @@
+{
+  "meta": {
+    "title": "Social Publisher",
+    "description": "Reliable, diagnosable multi-platform publishing"
+  },
+  "nav": {
+    "label": "Primary navigation",
+    "overview": "Overview",
+    "compose": "Create",
+    "publications": "Publications",
+    "accounts": "Social accounts",
+    "credentials": "Credentials",
+    "diagnostics": "Diagnostics"
+  },
+  "header": {
+    "environment": "Development",
+    "language": "中文",
+    "signIn": "Sign in",
+    "newPost": "New publication"
+  },
+  "dashboard": {
+    "eyebrow": "Operations console",
+    "title": "Publishing is healthy today",
+    "subtitle": "Monitor connections, queues, and outcomes across Instagram, Facebook, and X.",
+    "published": "Published today",
+    "scheduled": "Scheduled",
+    "attention": "Needs attention",
+    "successRate": "7-day success rate",
+    "platformHealth": "Platform connections",
+    "recent": "Recent publications",
+    "viewAll": "View all",
+    "healthy": "Healthy",
+    "reauthorize": "Reauthorization needed",
+    "empty": "This foundation uses demo data. Live jobs appear here after persistence is connected."
+  },
+  "status": { "published": "Published", "scheduled": "Scheduled", "failed": "Failed" },
+  "credentials": {
+    "eyebrow": "Security console",
+    "title": "Credential center",
+    "subtitle": "Add, rotate, and revoke platform credentials safely. Plaintext is transmitted once and never displayed again.",
+    "target": "Management scope",
+    "workspace": "Workspace",
+    "platformApp": "Platform application",
+    "noWorkspace": "No manageable workspace",
+    "noPlatformApp": "No platform application configured",
+    "addOrRotate": "Add or rotate credential",
+    "rotationHint": "Saving a new value for the same type creates a version and automatically deactivates the old one.",
+    "type": "Credential type",
+    "secret": "Secret value",
+    "scopes": "Scopes",
+    "scopesPlaceholder": "Comma-separated, for example pages_manage_posts",
+    "expiresAt": "Expiration (optional)",
+    "save": "Encrypt and save",
+    "securityNote": "Only masked values are displayed. Production uses AWS KMS envelope encryption; secrets are not written to browser storage or logs.",
+    "versions": "Version history",
+    "count": "{count} versions",
+    "empty": "Credential versions appear here after selecting a platform application. There are no records yet.",
+    "version": "Version {version}",
+    "noScopes": "No declared scopes",
+    "created": "Created",
+    "expires": "Expires",
+    "revoke": "Revoke",
+    "confirmRevoke": "Revoke version {version}? This cannot be undone.",
+    "saved": "Credential encrypted and saved. The new version is active.",
+    "revoked": "Credential revoked.",
+    "loading": "Loading…",
+    "status": {
+      "ACTIVE": "Active",
+      "SUPERSEDED": "Superseded",
+      "REVOKED": "Revoked",
+      "EXPIRED": "Expired"
+    }
+  },
+  "errors": {
+    "authenticationRequired": "Sign in is required",
+    "permissionDenied": "You do not have permission to perform this action"
+  }
+}

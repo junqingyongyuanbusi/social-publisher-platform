@@ -1,0 +1,37 @@
+{
+  "name": "@social/api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "nest build",
+    "dev": "nest start --watch",
+    "start": "node dist/main.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run src"
+  },
+  "dependencies": {
+    "@nestjs/common": "11.1.28",
+    "@nestjs/core": "11.1.28",
+    "@nestjs/platform-express": "11.1.28",
+    "@nestjs/swagger": "11.4.5",
+    "@social/auth": "workspace:*",
+    "@social/contracts": "workspace:*",
+    "@social/credential-vault": "workspace:*",
+    "@social/credential-vault-aws": "workspace:*",
+    "@social/database": "workspace:*",
+    "@social/domain": "workspace:*",
+    "@social/platform-contract": "workspace:*",
+    "@social/platform-facebook": "workspace:*",
+    "@social/platform-instagram": "workspace:*",
+    "@social/platform-x": "workspace:*",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "11.0.23",
+    "@types/express": "5.0.6",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
+  }
+}

@@ -1,0 +1,6 @@
+* @junqingyongyuanbusi
+
+/.github/ @junqingyongyuanbusi
+/packages/platform-*/ @junqingyongyuanbusi
+/packages/credentials/ @junqingyongyuanbusi
+/packages/database/prisma/ @junqingyongyuanbusi
