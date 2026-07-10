@@ -17,6 +17,7 @@
 - 三个平台 Adapter 合同与模块骨架；
 - PostgreSQL/Prisma 数据模型；
 - Redis/BullMQ 基础设施；
+- AES-256-GCM 信封加密凭据保险库核心；
 - Docker Compose；
 - GitHub Actions CI。
 
@@ -46,3 +47,5 @@ The repository is in the foundation phase. Real OAuth credentials and publishing
 ### Security
 
 Never commit platform secrets or user tokens. Copy `.env.example` to `.env` for local-only values. Please report vulnerabilities according to [SECURITY.md](SECURITY.md).
+
+Credential encryption and key-provider requirements are documented in [docs/security/credential-vault.md](docs/security/credential-vault.md). Credential CRUD is not exposed until authentication and workspace RBAC are implemented.
