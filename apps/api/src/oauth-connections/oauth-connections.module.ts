@@ -224,9 +224,16 @@ class OAuthConnectionsService {
   async disconnect(workspaceId: string, connectionId: string, actorId: string, requestId: string) {
     const connection = await this.prisma.oAuthConnection.findFirst({
       where: { id: connectionId, workspaceId },
-      select: { id: true, socialAccountId: true },
+      select: { id: true, socialAccountId: true, platformApp: true },
     });
     if (!connection) throw new Error('oauth_connection_not_found');
+    await this.tokens.withDecryptedTokenBundle(workspaceId, connectionId, async (bytes) => {
+      const parsed = JSON.parse(Buffer.from(bytes).toString('utf8')) as { accessToken?: unknown };
+      if (typeof parsed.accessToken !== 'string') throw new Error('oauth_token_bundle_invalid');
+      await this.withClient(connection.platformApp, (client) =>
+        client.revoke(parsed.accessToken as string)
+      );
+    });
     await this.tokens.revoke(workspaceId, connectionId, actorId, requestId);
     await this.prisma.socialAccount.update({
       where: { id: connection.socialAccountId },

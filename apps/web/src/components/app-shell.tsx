@@ -60,9 +60,9 @@ export async function AppShell({
           <Link className="pill" href={`/api/auth/login?returnTo=/${locale}`}>
             {t('header.signIn')}
           </Link>
-          <button className="button" type="button">
+          <Link className="button" href={`/${locale}/compose`}>
             ＋ {t('header.newPost')}
-          </button>
+          </Link>
         </header>
         {children}
       </main>

@@ -73,4 +73,79 @@ describe('XOAuthClient', () => {
     );
     expect(String(init.body)).not.toContain('secret');
   });
+
+  it('creates and verifies a post with bearer authentication', async () => {
+    const request = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      if (String(url).endsWith('/2/tweets'))
+        return new Response(JSON.stringify({ data: { id: '123', text: 'hello' } }), {
+          status: 201,
+          headers: { 'content-type': 'application/json', 'x-request-id': 'x-request' },
+        });
+      return new Response(JSON.stringify({ data: { id: '123', text: 'hello' } }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+    const client = new XOAuthClient({
+      clientId: 'client',
+      redirectUri: 'https://publisher.test/callback',
+      fetch: request as typeof fetch,
+    });
+    expect(await client.createPost('access', { text: 'hello' })).toMatchObject({
+      id: '123',
+      platformRequestId: 'x-request',
+    });
+    expect(await client.getPost('access', '123')).toMatchObject({ id: '123', text: 'hello' });
+    expect((request.mock.calls[0]?.[1]?.headers as Record<string, string>).authorization).toBe(
+      'Bearer access'
+    );
+  });
+
+  it('classifies a transport failure after POST as an unknown result', async () => {
+    const client = new XOAuthClient({
+      clientId: 'client',
+      redirectUri: 'https://publisher.test/callback',
+      fetch: vi.fn(async () => {
+        throw new Error('timeout');
+      }) as typeof fetch,
+    });
+    await expect(client.createPost('access', { text: 'hello' })).rejects.toMatchObject({
+      code: 'x_create_post_result_unknown',
+      resultUnknown: true,
+      retryable: false,
+    });
+  });
+
+  it('classifies rate limits as retryable and respects Retry-After', async () => {
+    const client = new XOAuthClient({
+      clientId: 'client',
+      redirectUri: 'https://publisher.test/callback',
+      fetch: vi.fn(
+        async () => new Response('{}', { status: 429, headers: { 'retry-after': '17' } })
+      ) as typeof fetch,
+    });
+    await expect(client.createPost('access', { text: 'hello' })).rejects.toMatchObject({
+      code: 'x_create_post_failed',
+      retryable: true,
+      retryAfterMs: 17_000,
+    });
+  });
+
+  it('classifies an invalid refresh grant as reauthorization required', async () => {
+    const client = new XOAuthClient({
+      clientId: 'client',
+      redirectUri: 'https://publisher.test/callback',
+      fetch: vi.fn(
+        async () =>
+          new Response(JSON.stringify({ error: 'invalid_grant' }), {
+            status: 400,
+            headers: { 'content-type': 'application/json' },
+          })
+      ) as typeof fetch,
+    });
+    await expect(client.refresh('rotated-away')).rejects.toMatchObject({
+      code: 'x_authorization_required',
+      retryable: false,
+    });
+  });
 });

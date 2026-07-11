@@ -31,6 +31,32 @@
     "empty": "首个版本使用演示数据；接入数据库后将在这里显示实时任务。"
   },
   "status": { "published": "已发布", "scheduled": "已排期", "failed": "失败" },
+  "compose": {
+    "eyebrow": "发布控制台",
+    "title": "创建发布",
+    "subtitle": "创建不可变内容版本，并立即发布或安排到指定时间。",
+    "workspace": "工作区",
+    "account": "发布账号",
+    "noAccount": "请先连接一个社媒账号",
+    "contentTitle": "内容标题",
+    "text": "正文",
+    "schedule": "发布时间（留空则立即发布）",
+    "publish": "创建发布任务",
+    "saving": "正在创建…",
+    "created": "发布任务已创建，可在发布任务页面查看执行结果。"
+  },
+  "publications": {
+    "eyebrow": "运行中心",
+    "title": "发布任务",
+    "subtitle": "查看队列、平台结果和每次执行的可诊断状态。",
+    "recent": "最近任务",
+    "refresh": "刷新",
+    "empty": "当前没有发布任务。",
+    "noError": "无错误",
+    "openRemote": "打开平台内容",
+    "cancel": "取消",
+    "retry": "重试"
+  },
   "accounts": {
     "eyebrow": "连接中心",
     "title": "社媒账号",

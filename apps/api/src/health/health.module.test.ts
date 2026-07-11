@@ -34,7 +34,7 @@ describe('API health probes', () => {
     expect(result).toEqual({
       status: 'ready',
       code: 'service_ready',
-      checks: { postgres: 'ready', oidc: 'configured', credentialKek: 'ready' },
+      checks: { postgres: 'ready', redis: 'ready', oidc: 'configured', credentialKek: 'ready' },
     });
   });
 
@@ -46,7 +46,12 @@ describe('API health probes', () => {
     expect(result).toEqual({
       status: 'not_ready',
       code: 'service_not_ready',
-      checks: { postgres: 'unavailable', oidc: 'configured', credentialKek: 'ready' },
+      checks: {
+        postgres: 'unavailable',
+        redis: 'ready',
+        oidc: 'configured',
+        credentialKek: 'ready',
+      },
     });
     expect(JSON.stringify(result)).not.toContain('secret');
   });
@@ -85,7 +90,12 @@ describe('API health probes', () => {
     expect(result).toEqual({
       status: 'not_ready',
       code: 'service_not_ready',
-      checks: { postgres: 'ready', oidc: 'configured', credentialKek: 'unavailable' },
+      checks: {
+        postgres: 'ready',
+        redis: 'ready',
+        oidc: 'configured',
+        credentialKek: 'unavailable',
+      },
     });
   });
 });
@@ -95,5 +105,10 @@ function readinessWith(
   checkKek: () => Promise<void> = async () => undefined
 ): ReadinessService {
   const prisma = { $queryRaw: vi.fn(query) } as unknown as PrismaService;
-  return new ReadinessService(prisma, config, { check: checkKek });
+  return new ReadinessService(
+    prisma,
+    config,
+    { check: checkKek },
+    { check: async () => undefined }
+  );
 }

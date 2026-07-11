@@ -131,9 +131,21 @@ importers:
 
   apps/worker:
     dependencies:
+      '@social/credential-vault':
+        specifier: workspace:*
+        version: link:../../packages/credential-vault
+      '@social/credential-vault-aws':
+        specifier: workspace:*
+        version: link:../../packages/credential-vault-aws
+      '@social/database':
+        specifier: workspace:*
+        version: link:../../packages/database
       '@social/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@social/platform-x':
+        specifier: workspace:*
+        version: link:../../packages/platform-x
       bullmq:
         specifier: 5.79.0
         version: 5.79.0

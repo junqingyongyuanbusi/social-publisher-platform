@@ -258,7 +258,8 @@ h1 {
   font-weight: 650;
 }
 .credentialControls input,
-.credentialControls select {
+.credentialControls select,
+.credentialControls textarea {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 9px;
@@ -268,7 +269,8 @@ h1 {
   font: inherit;
 }
 .credentialControls input:focus,
-.credentialControls select:focus {
+.credentialControls select:focus,
+.credentialControls textarea:focus {
   outline: 3px solid var(--brand-soft);
   border-color: var(--brand);
 }

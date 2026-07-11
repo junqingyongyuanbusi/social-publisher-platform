@@ -37,10 +37,19 @@ export interface XUser {
   readonly username: string;
 }
 
+export interface XPost {
+  readonly id: string;
+  readonly text: string;
+}
+
 export class XApiError extends Error {
   constructor(
     readonly code: string,
-    readonly status: number
+    readonly status: number,
+    readonly retryable = false,
+    readonly resultUnknown = false,
+    readonly retryAfterMs?: number,
+    readonly platformRequestId?: string
   ) {
     super(code);
     this.name = 'XApiError';
@@ -111,6 +120,67 @@ export class XOAuthClient {
     if (!response.ok) throw new XApiError('x_token_revoke_failed', response.status);
   }
 
+  async createPost(
+    accessToken: string,
+    input: { text: string; replyToId?: string; mediaIds?: readonly string[] },
+    signal?: AbortSignal
+  ): Promise<XPost & { platformRequestId?: string }> {
+    let response: Response;
+    try {
+      response = await this.request(X_API_ENDPOINTS.createPost, {
+        method: 'POST',
+        ...(signal ? { signal } : {}),
+        headers: {
+          authorization: `Bearer ${accessToken}`,
+          'content-type': 'application/json',
+          accept: 'application/json',
+        },
+        body: JSON.stringify({
+          text: input.text,
+          ...(input.replyToId ? { reply: { in_reply_to_tweet_id: input.replyToId } } : {}),
+          ...(input.mediaIds?.length ? { media: { media_ids: [...input.mediaIds] } } : {}),
+        }),
+      });
+    } catch {
+      throw new XApiError('x_create_post_result_unknown', 0, false, true);
+    }
+    const requestId = response.headers.get('x-request-id') ?? undefined;
+    const payload = await readJson(response);
+    if (!response.ok) throw responseError('x_create_post_failed', response, requestId);
+    const data = record(payload.data);
+    const id = string(data.id);
+    const text = string(data.text);
+    if (!id)
+      throw new XApiError('x_create_post_response_invalid', 502, false, true, undefined, requestId);
+    return { id, text, ...(requestId ? { platformRequestId: requestId } : {}) };
+  }
+
+  async getPost(
+    accessToken: string,
+    postId: string,
+    signal?: AbortSignal
+  ): Promise<(XPost & { platformRequestId?: string }) | null> {
+    let response: Response;
+    try {
+      response = await this.request(`${X_API_ENDPOINTS.createPost}/${encodeURIComponent(postId)}`, {
+        ...(signal ? { signal } : {}),
+        headers: { authorization: `Bearer ${accessToken}`, accept: 'application/json' },
+      });
+    } catch {
+      throw new XApiError('x_get_post_unavailable', 0, true);
+    }
+    const requestId = response.headers.get('x-request-id') ?? undefined;
+    if (response.status === 404) return null;
+    const payload = await readJson(response);
+    if (!response.ok) throw responseError('x_get_post_failed', response, requestId);
+    const data = record(payload.data);
+    const id = string(data.id);
+    const text = string(data.text);
+    if (!id)
+      throw new XApiError('x_get_post_response_invalid', 502, true, false, undefined, requestId);
+    return { id, text, ...(requestId ? { platformRequestId: requestId } : {}) };
+  }
+
   private async token(values: Record<string, string>): Promise<XTokenSet> {
     const response = await this.request(X_API_ENDPOINTS.token, {
       method: 'POST',
@@ -118,7 +188,15 @@ export class XOAuthClient {
       body: this.form(values),
     });
     const body = await readJson(response);
-    if (!response.ok) throw new XApiError('x_token_exchange_failed', response.status);
+    if (!response.ok) {
+      if (response.status === 400 && string(body.error) === 'invalid_grant')
+        throw new XApiError('x_authorization_required', response.status);
+      throw responseError(
+        'x_token_exchange_failed',
+        response,
+        response.headers.get('x-request-id') ?? undefined
+      );
+    }
     const accessToken = string(body.access_token);
     const expiresIn = number(body.expires_in);
     if (!accessToken || !expiresIn) throw new XApiError('x_token_response_invalid', 502);
@@ -180,6 +258,20 @@ function number(value: unknown): number {
   return typeof value === 'number' && value > 0 ? value : 0;
 }
 
+function responseError(code: string, response: Response, requestId?: string): XApiError {
+  const seconds = Number(response.headers.get('retry-after'));
+  const retryAfterMs = Number.isFinite(seconds) && seconds > 0 ? seconds * 1_000 : undefined;
+  const retryable = response.status === 429 || response.status >= 500;
+  return new XApiError(
+    response.status === 401 || response.status === 403 ? 'x_authorization_required' : code,
+    response.status,
+    retryable,
+    false,
+    retryAfterMs,
+    requestId
+  );
+}
+
 export class XAdapter implements PlatformAdapter {
   public readonly platform = 'x' as const;
 
@@ -201,6 +293,9 @@ export class XAdapter implements PlatformAdapter {
     const issues: ValidationIssue[] = [];
     if (!draft.text.trim() && draft.media.length === 0) {
       issues.push({ code: 'X_EMPTY_POST', path: 'text', messageKey: 'errors.x.emptyPost' });
+    }
+    if (Array.from(draft.text).length > 280) {
+      issues.push({ code: 'X_TEXT_TOO_LONG', path: 'text', messageKey: 'errors.x.textTooLong' });
     }
     if (draft.media.length > 4) {
       issues.push({

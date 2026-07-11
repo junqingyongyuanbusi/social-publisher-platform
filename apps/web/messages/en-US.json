@@ -34,6 +34,32 @@
     "empty": "This foundation uses demo data. Live jobs appear here after persistence is connected."
   },
   "status": { "published": "Published", "scheduled": "Scheduled", "failed": "Failed" },
+  "compose": {
+    "eyebrow": "Publishing console",
+    "title": "Create publication",
+    "subtitle": "Create an immutable content version and publish now or at a selected time.",
+    "workspace": "Workspace",
+    "account": "Publishing account",
+    "noAccount": "Connect a social account first",
+    "contentTitle": "Content title",
+    "text": "Post text",
+    "schedule": "Publish time (leave empty for now)",
+    "publish": "Create publication",
+    "saving": "Creating…",
+    "created": "Publication created. Track its execution on the Publications page."
+  },
+  "publications": {
+    "eyebrow": "Operations center",
+    "title": "Publications",
+    "subtitle": "Inspect queue state, provider outcomes, and diagnosable execution attempts.",
+    "recent": "Recent publications",
+    "refresh": "Refresh",
+    "empty": "There are no publications yet.",
+    "noError": "No error",
+    "openRemote": "Open remote post",
+    "cancel": "Cancel",
+    "retry": "Retry"
+  },
   "accounts": {
     "eyebrow": "Connection center",
     "title": "Social accounts",

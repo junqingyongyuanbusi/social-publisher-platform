@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from './auth/auth.module.js';
 import { ApiConfigModule } from './config/api-config.module.js';
 import { CredentialsModule } from './credentials/credentials.module.js';
+import { ContentsModule } from './contents/contents.module.js';
 import { DatabaseModule } from './database/database.module.js';
 import { HealthModule } from './health/health.module.js';
 import { IdentityModule } from './identity/identity.module.js';
@@ -15,6 +16,7 @@ import { PublicationsModule } from './publications/publications.module.js';
     ApiConfigModule.forRoot(),
     AuthModule,
     DatabaseModule,
+    ContentsModule,
     CredentialsModule,
     HealthModule,
     IdentityModule,
