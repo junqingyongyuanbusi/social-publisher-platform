@@ -54,7 +54,7 @@ jobs:
           IMAGE_TAG="$GITHUB_SHA" docker compose -f deploy/compose.production.yml config --quiet
       - name: Validate observability configuration
         run: |
-          docker run --rm -v "$PWD/deploy:/etc/prometheus:ro" prom/prometheus:v3.5.0 promtool check config /etc/prometheus/prometheus.yml
+          docker run --rm --entrypoint /bin/promtool -v "$PWD/deploy:/etc/prometheus:ro" prom/prometheus:v3.5.0 check config /etc/prometheus/prometheus.yml
           docker run --rm -v "$PWD/deploy/otel-collector.yaml:/etc/otelcol/config.yaml:ro" otel/opentelemetry-collector-contrib:0.130.1 validate --config=/etc/otelcol/config.yaml
       - name: Build production images
         run: |
