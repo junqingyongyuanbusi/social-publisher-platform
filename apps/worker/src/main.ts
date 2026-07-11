@@ -19,6 +19,7 @@ import {
   PrismaOAuthTokenVersionRepository,
 } from '@social/database';
 import { XApiError, XOAuthClient } from '@social/platform-x';
+import { MetaApiError, MetaGraphClient } from '@social/platform-facebook';
 import { PUBLICATION_QUEUE, jobOptions } from './queue-policy.js';
 
 type PublicationJob = { publicationId: string; workspaceId: string };
@@ -119,44 +120,49 @@ async function execute(job: Job<PublicationJob>): Promise<void> {
   if (!claimed) return;
 
   try {
-    if (claimed.publication.platform !== 'X')
-      throw new XApiError('platform_executor_not_implemented', 501);
-    const result = await withValidXAccessToken(claimed.connection, async (client, accessToken) => {
-      const mediaIds: string[] = [];
-      for (const item of claimed.publication.media) {
-        if (
-          item.mediaAsset.kind !== 'IMAGE' ||
-          !['image/jpeg', 'image/png', 'image/webp'].includes(item.mediaAsset.mimeType)
-        )
-          throw new XApiError('x_media_unsupported', 422);
-        const bytes = await readMedia(item.mediaAsset);
-        try {
-          const uploaded = await client.uploadImage(
-            accessToken,
-            bytes,
-            item.mediaAsset.mimeType as 'image/jpeg' | 'image/png' | 'image/webp',
-            item.altText ?? undefined,
-            AbortSignal.timeout(30_000)
-          );
-          mediaIds.push(uploaded.id);
-          await prisma.publicationMedia.update({
-            where: { id: item.id },
-            data: { remoteMediaId: uploaded.id },
-          });
-        } finally {
-          bytes.fill(0);
-        }
-      }
-      return client.createPost(
-        accessToken,
-        {
-          text: claimed.publication.text,
-          ...replySetting(claimed.publication.settings),
-          ...(mediaIds.length ? { mediaIds } : {}),
-        },
-        AbortSignal.timeout(20_000)
-      );
-    });
+    const result =
+      claimed.publication.platform === 'X'
+        ? await withValidXAccessToken(claimed.connection, async (client, accessToken) => {
+            const mediaIds: string[] = [];
+            for (const item of claimed.publication.media) {
+              if (
+                item.mediaAsset.kind !== 'IMAGE' ||
+                !['image/jpeg', 'image/png', 'image/webp'].includes(item.mediaAsset.mimeType)
+              )
+                throw new XApiError('x_media_unsupported', 422);
+              const bytes = await readMedia(item.mediaAsset);
+              try {
+                const uploaded = await client.uploadImage(
+                  accessToken,
+                  bytes,
+                  item.mediaAsset.mimeType as 'image/jpeg' | 'image/png' | 'image/webp',
+                  item.altText ?? undefined,
+                  AbortSignal.timeout(30_000)
+                );
+                mediaIds.push(uploaded.id);
+                await prisma.publicationMedia.update({
+                  where: { id: item.id },
+                  data: { remoteMediaId: uploaded.id },
+                });
+              } finally {
+                bytes.fill(0);
+              }
+            }
+            return client.createPost(
+              accessToken,
+              {
+                text: claimed.publication.text,
+                ...replySetting(claimed.publication.settings),
+                ...(mediaIds.length ? { mediaIds } : {}),
+              },
+              AbortSignal.timeout(20_000)
+            );
+          })
+        : claimed.publication.platform === 'FACEBOOK'
+          ? await publishFacebook(claimed)
+          : (() => {
+              throw new MetaApiError('platform_executor_not_implemented', 501);
+            })();
     await prisma.$transaction([
       prisma.publicationAttempt.update({
         where: { id: claimed.attempt.id },
@@ -172,7 +178,11 @@ async function execute(job: Job<PublicationJob>): Promise<void> {
         data: {
           status: 'PUBLISHED',
           remotePostId: result.id,
-          remotePostUrl: `https://x.com/i/web/status/${result.id}`,
+          remotePostUrl:
+            ('remoteUrl' in result ? result.remoteUrl : undefined) ??
+            (claimed.publication.platform === 'X'
+              ? `https://x.com/i/web/status/${result.id}`
+              : null),
           publishedAt: new Date(),
         },
       }),
@@ -219,6 +229,102 @@ async function withValidXAccessToken<T>(
         bundle.accessToken
       );
     }
+  );
+}
+
+async function publishFacebook(claimed: {
+  publication: {
+    text: string;
+    settings: unknown;
+    socialAccount: { remoteId: string };
+    media: {
+      id: string;
+      altText: string | null;
+      mediaAsset: {
+        kind: string;
+        mimeType: string;
+        storageProvider: string;
+        storageBucket: string;
+        storageKey: string;
+        sizeBytes: bigint;
+      };
+    }[];
+  };
+  connection: {
+    id: string;
+    workspaceId: string;
+    platformAppId: string;
+    platformApp: { publicClientId: string; redirectUri: string; apiVersion: string | null };
+  };
+}) {
+  if (claimed.publication.media.length > 1)
+    throw new MetaApiError('facebook_single_image_only', 422);
+  return withMetaAccess(claimed.connection, async (client, accessToken) => {
+    const media = claimed.publication.media[0];
+    let result: { id: string; platformRequestId?: string };
+    if (media) {
+      if (media.mediaAsset.kind !== 'IMAGE')
+        throw new MetaApiError('facebook_media_unsupported', 422);
+      const bytes = await readMedia(media.mediaAsset);
+      try {
+        result = await client.publishPagePhoto(
+          claimed.publication.socialAccount.remoteId,
+          accessToken,
+          bytes,
+          media.mediaAsset.mimeType,
+          claimed.publication.text,
+          AbortSignal.timeout(30_000)
+        );
+        await prisma.publicationMedia.update({
+          where: { id: media.id },
+          data: { remoteMediaId: result.id },
+        });
+      } finally {
+        bytes.fill(0);
+      }
+    } else {
+      result = await client.publishPagePost(
+        claimed.publication.socialAccount.remoteId,
+        accessToken,
+        { message: claimed.publication.text, ...facebookLink(claimed.publication.settings) },
+        AbortSignal.timeout(20_000)
+      );
+    }
+    let remoteUrl: string | undefined;
+    try {
+      remoteUrl = (
+        await client.getPublishedObject(result.id, accessToken, AbortSignal.timeout(10_000))
+      )?.permalinkUrl;
+    } catch {}
+    return { ...result, ...(remoteUrl ? { remoteUrl } : {}) };
+  });
+}
+
+async function withMetaAccess<T>(
+  connectionRecord: {
+    id: string;
+    workspaceId: string;
+    platformAppId: string;
+    platformApp: { publicClientId: string; redirectUri: string; apiVersion: string | null };
+  },
+  operation: (client: MetaGraphClient, accessToken: string) => Promise<T>
+): Promise<T> {
+  const active = (
+    await credentials.list(connectionRecord.workspaceId, connectionRecord.platformAppId)
+  ).find((item) => item.credentialType === 'app_secret' && item.status === 'ACTIVE');
+  if (!active) throw new MetaApiError('platform_app_secret_required', 500);
+  return credentials.withDecryptedCredential(connectionRecord.workspaceId, active.id, (secret) =>
+    tokens.withDecryptedTokenBundle(connectionRecord.workspaceId, connectionRecord.id, (bytes) =>
+      operation(
+        new MetaGraphClient({
+          clientId: connectionRecord.platformApp.publicClientId,
+          clientSecret: Buffer.from(secret).toString('utf8'),
+          redirectUri: connectionRecord.platformApp.redirectUri,
+          apiVersion: connectionRecord.platformApp.apiVersion ?? 'v23.0',
+        }),
+        parseBundle(bytes).accessToken
+      )
+    )
   );
 }
 
@@ -331,10 +437,12 @@ async function recordFailure(
   job: Job<PublicationJob>
 ): Promise<void> {
   const x =
-    error instanceof XApiError ? error : new XApiError('publication_executor_failed', 0, true);
+    error instanceof XApiError || error instanceof MetaApiError
+      ? error
+      : new XApiError('publication_executor_failed', 0, true);
   const status = x.resultUnknown
     ? 'RESULT_UNKNOWN'
-    : x.code === 'x_authorization_required'
+    : ['x_authorization_required', 'meta_authorization_required'].includes(x.code)
       ? 'REAUTH_REQUIRED'
       : x.retryable
         ? 'RETRY_WAITING'
@@ -349,7 +457,7 @@ async function recordFailure(
         errorCode: x.code,
         errorClass: x.resultUnknown
           ? 'UNKNOWN_RESULT'
-          : x.code === 'x_authorization_required'
+          : ['x_authorization_required', 'meta_authorization_required'].includes(x.code)
             ? 'AUTHENTICATION'
             : x.retryable
               ? 'TRANSIENT'
@@ -505,6 +613,11 @@ function replySetting(value: unknown): { replyToId?: string } {
     typeof value.replyToId === 'string'
   )
     return { replyToId: value.replyToId };
+  return {};
+}
+function facebookLink(value: unknown): { link?: string } {
+  if (value && typeof value === 'object' && 'link' in value && typeof value.link === 'string')
+    return { link: value.link };
   return {};
 }
 async function readMedia(asset: {

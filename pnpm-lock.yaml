@@ -155,6 +155,9 @@ importers:
       '@social/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@social/platform-facebook':
+        specifier: workspace:*
+        version: link:../../packages/platform-facebook
       '@social/platform-x':
         specifier: workspace:*
         version: link:../../packages/platform-x

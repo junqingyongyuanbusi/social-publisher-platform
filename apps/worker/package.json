@@ -16,6 +16,7 @@
     "@social/credential-vault-aws": "workspace:*",
     "@social/database": "workspace:*",
     "@social/domain": "workspace:*",
+    "@social/platform-facebook": "workspace:*",
     "@social/platform-x": "workspace:*",
     "bullmq": "5.79.0",
     "ioredis": "5.10.1"

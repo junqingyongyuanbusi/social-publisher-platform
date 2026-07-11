@@ -7,3 +7,7 @@ The callback exchanges the authorization code, converts the user token to a long
 Required Facebook scopes are `pages_show_list`, `pages_read_engagement`, and `pages_manage_posts`. Instagram additionally requires `instagram_basic` and `instagram_content_publish`. Meta App Review, Business verification, Page roles, and the Page-to-Instagram Professional link remain external prerequisites.
 
 The Graph API version is never inferred from the latest release at runtime; it is pinned on PlatformApp so upgrades can be tested and rolled out explicitly.
+
+## Facebook Page publishing
+
+The worker publishes text and optional links to `/{page-id}/feed`. A single validated private image is uploaded as multipart binary to `/{page-id}/photos` with the publication text as its caption. The Page token comes only from that Page account's encrypted token version. Returned object IDs and Meta request/trace IDs are persisted; the worker then makes a best-effort lookup for `permalink_url`. Transport failure after a publish request is `RESULT_UNKNOWN` and is not blindly replayed.

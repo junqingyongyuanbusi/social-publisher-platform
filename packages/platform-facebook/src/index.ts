@@ -21,7 +21,10 @@ export class MetaApiError extends Error {
   constructor(
     readonly code: string,
     readonly status: number,
-    readonly retryable = false
+    readonly retryable = false,
+    readonly resultUnknown = false,
+    readonly retryAfterMs?: number,
+    readonly platformRequestId?: string
   ) {
     super(code);
     this.name = 'MetaApiError';
@@ -115,6 +118,88 @@ export class MetaGraphClient {
     );
     if (!response.ok) throw metaError('meta_token_revoke_failed', response);
   }
+  async publishPagePost(
+    pageId: string,
+    accessToken: string,
+    input: { message: string; link?: string },
+    signal?: AbortSignal
+  ): Promise<{ id: string; platformRequestId?: string }> {
+    const form = new URLSearchParams({
+      message: input.message,
+      access_token: accessToken,
+      ...(input.link ? { link: input.link } : {}),
+    });
+    return this.publish(`/${encodeURIComponent(pageId)}/feed`, form, signal);
+  }
+  async publishPagePhoto(
+    pageId: string,
+    accessToken: string,
+    bytes: Uint8Array,
+    mimeType: string,
+    caption: string,
+    signal?: AbortSignal
+  ): Promise<{ id: string; platformRequestId?: string }> {
+    const form = new FormData();
+    form.set('source', new Blob([new Uint8Array(bytes)], { type: mimeType }), 'image');
+    form.set('caption', caption);
+    form.set('access_token', accessToken);
+    return this.publish(`/${encodeURIComponent(pageId)}/photos`, form, signal);
+  }
+  async getPublishedObject(
+    objectId: string,
+    accessToken: string,
+    signal?: AbortSignal
+  ): Promise<{ id: string; permalinkUrl?: string } | null> {
+    let response: Response;
+    try {
+      response = await this.request(
+        this.graph(`/${encodeURIComponent(objectId)}`, {
+          fields: 'id,permalink_url',
+          access_token: accessToken,
+        }),
+        { ...(signal ? { signal } : {}), headers: { accept: 'application/json' } }
+      );
+    } catch {
+      throw new MetaApiError('meta_verify_unavailable', 0, true);
+    }
+    if (response.status === 404) return null;
+    const body = await json(response);
+    if (!response.ok) throw metaError('meta_verify_failed', response);
+    const id = text(body.id);
+    if (!id) throw new MetaApiError('meta_verify_response_invalid', 502, true);
+    return { id, ...(text(body.permalink_url) ? { permalinkUrl: text(body.permalink_url) } : {}) };
+  }
+  private async publish(
+    path: string,
+    body: BodyInit,
+    signal?: AbortSignal
+  ): Promise<{ id: string; platformRequestId?: string }> {
+    let response: Response;
+    try {
+      response = await this.request(this.graph(path), {
+        method: 'POST',
+        ...(signal ? { signal } : {}),
+        body,
+      });
+    } catch {
+      throw new MetaApiError('meta_publish_result_unknown', 0, false, true);
+    }
+    const payload = await json(response);
+    const requestId =
+      response.headers.get('x-fb-trace-id') ?? response.headers.get('x-fb-request-id') ?? undefined;
+    if (!response.ok) throw metaError('meta_publish_failed', response, requestId);
+    const id = text(payload.post_id) || text(payload.id);
+    if (!id)
+      throw new MetaApiError(
+        'meta_publish_response_invalid',
+        502,
+        false,
+        true,
+        undefined,
+        requestId
+      );
+    return { id, ...(requestId ? { platformRequestId: requestId } : {}) };
+  }
   private async token(query: URLSearchParams) {
     const response = await this.request(`${this.graph('/oauth/access_token')}?${query}`, {
       headers: { accept: 'application/json' },
@@ -149,11 +234,17 @@ function record(value: unknown): Record<string, unknown> {
 function text(value: unknown) {
   return typeof value === 'string' ? value : '';
 }
-function metaError(code: string, response: Response) {
+function metaError(code: string, response: Response, requestId?: string) {
+  const retryAfter = Number(response.headers.get('retry-after'));
+  const retryAfterMs =
+    Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : undefined;
   return new MetaApiError(
     response.status === 401 || response.status === 403 ? 'meta_authorization_required' : code,
     response.status,
-    response.status === 429 || response.status >= 500
+    response.status === 429 || response.status >= 500,
+    false,
+    retryAfterMs,
+    requestId
   );
 }
 
@@ -164,7 +255,7 @@ export class FacebookAdapter implements PlatformAdapter {
     return {
       text: true,
       link: true,
-      image: { enabled: true, maxCount: 10 },
+      image: { enabled: true, maxCount: 1 },
       video: { enabled: true },
       carousel: false,
       reels: false,
@@ -177,6 +268,14 @@ export class FacebookAdapter implements PlatformAdapter {
     if (!draft.text.trim() && draft.media.length === 0) {
       return [{ code: 'FB_EMPTY_POST', path: 'text', messageKey: 'errors.facebook.emptyPost' }];
     }
+    if (draft.media.length > 1)
+      return [
+        {
+          code: 'FB_SINGLE_IMAGE_ONLY',
+          path: 'media',
+          messageKey: 'errors.facebook.singleImageOnly',
+        },
+      ];
     return [];
   }
 

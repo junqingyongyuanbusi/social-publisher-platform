@@ -41,7 +41,9 @@ export function Composer() {
   async function select(id: string) {
     setWorkspaceId(id);
     const rows = await json<Account[]>(`/api/bff/workspaces/${id}/social-accounts`);
-    const active = rows.filter((x) => x.status === 'ACTIVE' && x.platform === 'X');
+    const active = rows.filter(
+      (x) => x.status === 'ACTIVE' && ['X', 'FACEBOOK'].includes(x.platform)
+    );
     setAccounts(active);
     setAccountId(active[0]?.id ?? '');
   }
@@ -82,7 +84,10 @@ export function Composer() {
           contentLocale: locale,
           ...(scheduledAt ? { scheduledAt: new Date(scheduledAt).toISOString() } : {}),
           media,
-          settings: { platform: account!.platform.toLowerCase() },
+          settings:
+            account!.platform === 'FACEBOOK'
+              ? { platform: 'facebook', postType: media.length ? 'photo' : 'feed' }
+              : { platform: 'x' },
         }),
       });
       setMessage(t('created'));
