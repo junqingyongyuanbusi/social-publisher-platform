@@ -5,7 +5,7 @@
   "scripts": {
     "build": "nest build",
     "dev": "nest start --watch",
-    "start": "node dist/main.js",
+    "start": "node --import ./dist/instrumentation.js dist/main.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run src"
   },
@@ -15,6 +15,11 @@
     "@nestjs/core": "11.1.28",
     "@nestjs/platform-express": "11.1.28",
     "@nestjs/swagger": "11.4.5",
+    "@opentelemetry/auto-instrumentations-node": "0.64.1",
+    "@opentelemetry/exporter-metrics-otlp-http": "0.203.0",
+    "@opentelemetry/exporter-trace-otlp-http": "0.203.0",
+    "@opentelemetry/sdk-metrics": "2.0.1",
+    "@opentelemetry/sdk-node": "0.203.0",
     "@social/auth": "workspace:*",
     "@social/contracts": "workspace:*",
     "@social/credential-vault": "workspace:*",

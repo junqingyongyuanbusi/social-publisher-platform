@@ -1,0 +1,23 @@
+groups:
+  - name: social-publisher
+    rules:
+      - alert: SocialPublisherResultUnknown
+        expr: sum(social_publications_total{status="result_unknown"}) > 0
+        for: 2m
+        labels: { severity: critical }
+        annotations: { summary: Publishing results require reconciliation }
+      - alert: SocialPublisherFailures
+        expr: sum(social_publications_total{status="failed"}) > 0
+        for: 5m
+        labels: { severity: warning }
+        annotations: { summary: Publications are in a failed state }
+      - alert: SocialPublisherReauthorizationRequired
+        expr: sum(social_accounts_total{status="reauth_required"}) > 0
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: Social accounts require reauthorization }
+      - alert: SocialPublisherOutboxBacklog
+        expr: sum(social_outbox_events_total{status="pending"}) > 0
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: Transactional outbox events are not draining }
