@@ -17,6 +17,9 @@ import { OidcAuthGuard } from './oidc-auth.guard.js';
           jwksUri: config.oidc.jwksUri,
           algorithms: config.oidc.algorithms,
           maxTokenAgeSeconds: config.oidc.maxTokenAgeSeconds,
+          ...(config.oidc.defaultWorkspaceId
+            ? { defaultWorkspaceId: config.oidc.defaultWorkspaceId }
+            : {}),
           production: config.environment === 'production',
         }),
     },

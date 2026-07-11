@@ -12,7 +12,7 @@ The verifier requires:
 - `sub`, `iat`, and `exp` claims;
 - a bounded token age in addition to expiration;
 - an allowlisted algorithm (`RS256` and `ES256` by default); and
-- a strict, non-empty `social_workspaces` claim.
+- a strict, non-empty `social_workspaces` claim, or the bundled Keycloak realm-role mapping.
 
 Production issuer and JWKS URLs must use HTTPS. The JWKS URL is explicit configuration rather than a token-controlled URL, which prevents untrusted tokens from selecting a key endpoint.
 
@@ -27,6 +27,8 @@ The identity provider must add this claim to the API access token:
 ```
 
 The API rejects absent, empty, malformed, oversized, unknown-role, and duplicate workspace entries. A duplicate is rejected rather than merged because conflicting role values are ambiguous and may represent an identity-provider mapping error.
+
+For the bundled Keycloak deployment, the optional `OIDC_DEFAULT_WORKSPACE_ID` maps the highest recognized Keycloak realm role into one bootstrap workspace. This fallback is used only when `social_workspaces` is absent. Tokens without either a valid explicit membership or a recognized realm role fail closed.
 
 ## Roles
 

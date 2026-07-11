@@ -83,6 +83,43 @@ describe('OidcAccessTokenVerifier', () => {
     });
   });
 
+  it('maps the highest Keycloak realm role into the configured initial workspace', async () => {
+    const keycloakVerifier = new OidcAccessTokenVerifier(
+      {
+        issuer,
+        audience,
+        jwksUri: `${issuer}/jwks`,
+        maxTokenAgeSeconds: 3_600,
+        defaultWorkspaceId: '00000000-0000-4000-8000-000000000001',
+      },
+      createLocalJWKSet({ keys: [jwk] })
+    );
+    await expect(
+      keycloakVerifier.verify(
+        await token({ social_workspaces: undefined, realm_access: { roles: ['viewer', 'admin'] } })
+      )
+    ).resolves.toMatchObject({
+      memberships: [{ workspaceId: '00000000-0000-4000-8000-000000000001', role: 'admin' }],
+    });
+  });
+
+  it('does not grant initial-workspace access without a recognized Keycloak role', async () => {
+    const keycloakVerifier = new OidcAccessTokenVerifier(
+      {
+        issuer,
+        audience,
+        jwksUri: `${issuer}/jwks`,
+        defaultWorkspaceId: '00000000-0000-4000-8000-000000000001',
+      },
+      createLocalJWKSet({ keys: [jwk] })
+    );
+    await expect(
+      keycloakVerifier.verify(
+        await token({ social_workspaces: undefined, realm_access: { roles: ['offline_access'] } })
+      )
+    ).rejects.toMatchObject({ code: 'auth_memberships_invalid' });
+  });
+
   it('rejects expired tokens and tokens older than the configured maximum', async () => {
     const now = Math.floor(Date.now() / 1000);
     const expired = await new SignJWT({

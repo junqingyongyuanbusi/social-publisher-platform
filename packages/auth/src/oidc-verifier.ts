@@ -1,5 +1,12 @@
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey, type JWTPayload } from 'jose';
-import { AuthenticationError, parseMemberships, type AuthenticatedPrincipal } from './principal.js';
+import {
+  AuthenticationError,
+  isWorkspaceRole,
+  parseMemberships,
+  workspaceRoles,
+  type AuthenticatedPrincipal,
+  type WorkspaceMembership,
+} from './principal.js';
 
 const DEFAULT_ALGORITHMS = ['RS256', 'PS256', 'ES256', 'EdDSA'] as const;
 const MAX_TOKEN_BYTES = 16 * 1024;
@@ -12,6 +19,7 @@ export interface OidcVerifierConfig {
   readonly algorithms?: readonly string[];
   readonly maxTokenAgeSeconds?: number;
   readonly production?: boolean;
+  readonly defaultWorkspaceId?: string;
 }
 
 export interface AccessTokenVerifier {
@@ -25,6 +33,7 @@ export class OidcAccessTokenVerifier implements AccessTokenVerifier {
   private readonly algorithms: readonly string[];
   private readonly maxTokenAgeSeconds: number;
   private readonly getKey: JWTVerifyGetKey;
+  private readonly defaultWorkspaceId: string | undefined;
 
   constructor(config: OidcVerifierConfig, getKey?: JWTVerifyGetKey) {
     const issuer = parseUrl('issuer', config.issuer, config.production ?? false);
@@ -53,6 +62,10 @@ export class OidcAccessTokenVerifier implements AccessTokenVerifier {
     this.membershipsClaim = config.membershipsClaim ?? 'social_workspaces';
     this.algorithms = algorithms;
     this.maxTokenAgeSeconds = maxTokenAgeSeconds;
+    if (config.defaultWorkspaceId && !isUuid(config.defaultWorkspaceId)) {
+      throw new AuthenticationError('auth_config_invalid');
+    }
+    this.defaultWorkspaceId = config.defaultWorkspaceId;
     this.getKey =
       getKey ??
       createRemoteJWKSet(jwksUri, {
@@ -93,10 +106,30 @@ export class OidcAccessTokenVerifier implements AccessTokenVerifier {
     return {
       subject: payload.sub,
       issuer: this.issuer,
-      memberships: parseMemberships(payload[this.membershipsClaim]),
+      memberships: this.memberships(payload),
       ...optional,
     };
   }
+
+  private memberships(payload: JWTPayload): readonly WorkspaceMembership[] {
+    const explicit = payload[this.membershipsClaim];
+    if (explicit !== undefined) return parseMemberships(explicit);
+    if (!this.defaultWorkspaceId) throw new AuthenticationError('auth_memberships_invalid');
+
+    const realmAccess = payload['realm_access'];
+    if (realmAccess === null || typeof realmAccess !== 'object') {
+      throw new AuthenticationError('auth_memberships_invalid');
+    }
+    const roles = Reflect.get(realmAccess, 'roles');
+    if (!Array.isArray(roles)) throw new AuthenticationError('auth_memberships_invalid');
+    const role = [...workspaceRoles].reverse().find((candidate) => roles.includes(candidate));
+    if (!role || !isWorkspaceRole(role)) throw new AuthenticationError('auth_memberships_invalid');
+    return [{ workspaceId: this.defaultWorkspaceId, role }];
+  }
+}
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 function optionalIdentityClaims(

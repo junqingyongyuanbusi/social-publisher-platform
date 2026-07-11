@@ -29,6 +29,7 @@ const environmentSchema = z
     OIDC_JWKS_URI: z.string().min(1).max(2_048),
     OIDC_ALGORITHMS: z.string().default('RS256,ES256'),
     OIDC_MAX_TOKEN_AGE_SECONDS: z.coerce.number().int().min(60).max(86_400).default(3_600),
+    OIDC_DEFAULT_WORKSPACE_ID: z.string().uuid().optional(),
     CREDENTIAL_KEK_PROVIDER: z.enum(['local', 'aws-kms']).default('local'),
     CREDENTIAL_LOCAL_KEK_BASE64: z.string().optional(),
     CREDENTIAL_LOCAL_KEK_VERSION: z.string().trim().min(1).max(200).optional(),
@@ -150,6 +151,7 @@ export interface ApiConfig {
     readonly jwksUri: string;
     readonly algorithms: readonly string[];
     readonly maxTokenAgeSeconds: number;
+    readonly defaultWorkspaceId?: string;
   };
   readonly credentialKek:
     | { readonly provider: 'local'; readonly configured: true }
@@ -206,6 +208,9 @@ export function parseApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
       jwksUri: value.OIDC_JWKS_URI,
       algorithms: parseAlgorithms(value.OIDC_ALGORITHMS),
       maxTokenAgeSeconds: value.OIDC_MAX_TOKEN_AGE_SECONDS,
+      ...(value.OIDC_DEFAULT_WORKSPACE_ID
+        ? { defaultWorkspaceId: value.OIDC_DEFAULT_WORKSPACE_ID }
+        : {}),
     },
     credentialKek:
       value.CREDENTIAL_KEK_PROVIDER === 'aws-kms'

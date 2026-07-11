@@ -18,7 +18,7 @@
 - PostgreSQL/Prisma 数据模型；
 - Redis/BullMQ 基础设施；
 - AES-256-GCM 信封加密凭据保险库核心；
-- 通用 OIDC Access Token 验证与 Workspace RBAC；
+- 内置 Keycloak 身份服务、OIDC Access Token 验证与 Workspace RBAC；
 - Authorization Code + PKCE 浏览器登录与服务端会话；
 - 受 RBAC、CSRF 和 AWS KMS 保护的双语凭据中心；
 - Docker Compose；
@@ -30,20 +30,25 @@
 corepack enable
 pnpm install
 cp .env.example .env
-docker compose up -d postgres redis
+docker compose up -d postgres redis keycloak-postgres keycloak
+docker compose up keycloak-bootstrap
 pnpm db:generate
+pnpm db:migrate
 pnpm dev
 ```
 
 - Web: <http://localhost:3000/zh-CN>
 - API: <http://localhost:3001/api/v1>
 - Swagger: <http://localhost:3001/docs>
+- Keycloak 管理后台: <http://localhost:8080/admin>
+
+先替换 `.env` 中的三个 Keycloak 本地密码，再运行 `docker compose up keycloak-bootstrap` 创建应用 Owner。首次登录必须修改密码；任何开发密码都不会进入仓库或生产镜像。具体步骤见 [Keycloak 运维指南](docs/operations/keycloak.md)。
 
 当前三个平台的真实 OAuth、媒体处理与远程发布执行器仍处于 fail-closed 状态。生产 v1 的范围、里程碑和验收门槛见 [生产路线图](docs/roadmap/production-v1.md)。
 
 ## English
 
-A bilingual social publishing platform for Instagram, Facebook Pages, and X. The project uses a modular monolith architecture with secure credential management, a standards-based REST API, isolated platform adapters, background jobs, observability, and diagnosable errors.
+A bilingual social publishing platform for Instagram, Facebook Pages, and X. The project uses a modular monolith architecture with bundled Keycloak identity, secure credential management, a standards-based REST API, isolated platform adapters, background jobs, observability, and diagnosable errors.
 
 ### Status
 
