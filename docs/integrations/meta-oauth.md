@@ -11,3 +11,7 @@ The Graph API version is never inferred from the latest release at runtime; it i
 ## Facebook Page publishing
 
 The worker publishes text and optional links to `/{page-id}/feed`. A single validated private image is uploaded as multipart binary to `/{page-id}/photos` with the publication text as its caption. The Page token comes only from that Page account's encrypted token version. Returned object IDs and Meta request/trace IDs are persisted; the worker then makes a best-effort lookup for `permalink_url`. Transport failure after a publish request is `RESULT_UNKNOWN` and is not blindly replayed.
+
+## Instagram Professional image publishing
+
+Instagram image publishing requires Meta to fetch an `image_url`; the bucket remains private. The worker generates a 15-minute S3 GET signature, creates a container at `/{ig-user-id}/media`, persists its ID, and polls `status_code`. Only a `FINISHED` container is sent to `/{ig-user-id}/media_publish`, after which the media permalink is verified and stored. A publish transport failure is quarantined as `RESULT_UNKNOWN`. Local filesystem media is deliberately rejected because Meta cannot retrieve it.

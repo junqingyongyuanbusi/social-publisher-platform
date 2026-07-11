@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Queue, Worker, type Job } from 'bullmq';
 import { Redis } from 'ioredis';
 import {
@@ -20,6 +21,7 @@ import {
 } from '@social/database';
 import { XApiError, XOAuthClient } from '@social/platform-x';
 import { MetaApiError, MetaGraphClient } from '@social/platform-facebook';
+import { InstagramApiError, InstagramGraphClient } from '@social/platform-instagram';
 import { PUBLICATION_QUEUE, jobOptions } from './queue-policy.js';
 
 type PublicationJob = { publicationId: string; workspaceId: string };
@@ -160,9 +162,11 @@ async function execute(job: Job<PublicationJob>): Promise<void> {
           })
         : claimed.publication.platform === 'FACEBOOK'
           ? await publishFacebook(claimed)
-          : (() => {
-              throw new MetaApiError('platform_executor_not_implemented', 501);
-            })();
+          : claimed.publication.platform === 'INSTAGRAM'
+            ? await publishInstagram(claimed)
+            : (() => {
+                throw new MetaApiError('platform_executor_not_implemented', 501);
+              })();
     await prisma.$transaction([
       prisma.publicationAttempt.update({
         where: { id: claimed.attempt.id },
@@ -298,6 +302,100 @@ async function publishFacebook(claimed: {
     } catch {}
     return { ...result, ...(remoteUrl ? { remoteUrl } : {}) };
   });
+}
+
+async function publishInstagram(claimed: {
+  publication: {
+    text: string;
+    socialAccount: { remoteId: string };
+    media: {
+      id: string;
+      remoteContainerId: string | null;
+      mediaAsset: {
+        kind: string;
+        storageProvider: string;
+        storageBucket: string;
+        storageKey: string;
+      };
+    }[];
+  };
+  connection: { id: string; workspaceId: string; platformApp: { apiVersion: string | null } };
+}) {
+  if (claimed.publication.media.length !== 1)
+    throw new InstagramApiError('instagram_single_image_required', 422);
+  const item = claimed.publication.media[0]!;
+  if (item.mediaAsset.kind !== 'IMAGE' || item.mediaAsset.storageProvider !== 's3')
+    throw new InstagramApiError('instagram_s3_image_required', 422);
+  return tokens.withDecryptedTokenBundle(
+    claimed.connection.workspaceId,
+    claimed.connection.id,
+    async (bytes) => {
+      const accessToken = parseBundle(bytes).accessToken;
+      const client = new InstagramGraphClient({
+        apiVersion: claimed.connection.platformApp.apiVersion ?? 'v23.0',
+      });
+      let containerId = item.remoteContainerId;
+      if (!containerId) {
+        const imageUrl = await signedMediaUrl(
+          item.mediaAsset.storageBucket,
+          item.mediaAsset.storageKey
+        );
+        const created = await client.createImageContainer(
+          claimed.publication.socialAccount.remoteId,
+          accessToken,
+          imageUrl,
+          claimed.publication.text,
+          AbortSignal.timeout(20_000)
+        );
+        containerId = created.id;
+        await prisma.publicationMedia.update({
+          where: { id: item.id },
+          data: { remoteContainerId: containerId },
+        });
+      }
+      for (let poll = 0; poll < 20; poll += 1) {
+        const status = await client.containerStatus(
+          containerId,
+          accessToken,
+          AbortSignal.timeout(10_000)
+        );
+        if (status.status === 'FINISHED') {
+          const published = await client.publishContainer(
+            claimed.publication.socialAccount.remoteId,
+            accessToken,
+            containerId,
+            AbortSignal.timeout(20_000)
+          );
+          const verified = await client.media(
+            published.id,
+            accessToken,
+            AbortSignal.timeout(10_000)
+          );
+          return { ...published, remoteUrl: verified.permalink };
+        }
+        if (status.status === 'ERROR' || status.status === 'EXPIRED')
+          throw new InstagramApiError('instagram_container_failed', 422);
+        await delay(3_000);
+      }
+      throw new InstagramApiError('instagram_container_processing', 503, true);
+    }
+  );
+}
+
+async function signedMediaUrl(bucket: string, key: string) {
+  const client = new S3Client({
+    region: process.env['MEDIA_S3_REGION'] ?? process.env['AWS_REGION'] ?? 'us-east-1',
+    ...(process.env['MEDIA_S3_ENDPOINT']
+      ? { endpoint: process.env['MEDIA_S3_ENDPOINT'], forcePathStyle: true }
+      : {}),
+  });
+  try {
+    return await getSignedUrl(client, new GetObjectCommand({ Bucket: bucket, Key: key }), {
+      expiresIn: 900,
+    });
+  } finally {
+    client.destroy();
+  }
 }
 
 async function withMetaAccess<T>(
@@ -437,12 +535,18 @@ async function recordFailure(
   job: Job<PublicationJob>
 ): Promise<void> {
   const x =
-    error instanceof XApiError || error instanceof MetaApiError
+    error instanceof XApiError ||
+    error instanceof MetaApiError ||
+    error instanceof InstagramApiError
       ? error
       : new XApiError('publication_executor_failed', 0, true);
   const status = x.resultUnknown
     ? 'RESULT_UNKNOWN'
-    : ['x_authorization_required', 'meta_authorization_required'].includes(x.code)
+    : [
+          'x_authorization_required',
+          'meta_authorization_required',
+          'instagram_authorization_required',
+        ].includes(x.code)
       ? 'REAUTH_REQUIRED'
       : x.retryable
         ? 'RETRY_WAITING'
@@ -457,7 +561,11 @@ async function recordFailure(
         errorCode: x.code,
         errorClass: x.resultUnknown
           ? 'UNKNOWN_RESULT'
-          : ['x_authorization_required', 'meta_authorization_required'].includes(x.code)
+          : [
+                'x_authorization_required',
+                'meta_authorization_required',
+                'instagram_authorization_required',
+              ].includes(x.code)
             ? 'AUTHENTICATION'
             : x.retryable
               ? 'TRANSIENT'

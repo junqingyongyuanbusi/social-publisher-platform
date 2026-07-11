@@ -42,7 +42,7 @@ export function Composer() {
     setWorkspaceId(id);
     const rows = await json<Account[]>(`/api/bff/workspaces/${id}/social-accounts`);
     const active = rows.filter(
-      (x) => x.status === 'ACTIVE' && ['X', 'FACEBOOK'].includes(x.platform)
+      (x) => x.status === 'ACTIVE' && ['X', 'FACEBOOK', 'INSTAGRAM'].includes(x.platform)
     );
     setAccounts(active);
     setAccountId(active[0]?.id ?? '');
@@ -87,7 +87,9 @@ export function Composer() {
           settings:
             account!.platform === 'FACEBOOK'
               ? { platform: 'facebook', postType: media.length ? 'photo' : 'feed' }
-              : { platform: 'x' },
+              : account!.platform === 'INSTAGRAM'
+                ? { platform: 'instagram', postType: 'feed' }
+                : { platform: 'x' },
         }),
       });
       setMessage(t('created'));
@@ -156,7 +158,14 @@ export function Composer() {
           type="file"
           accept="image/jpeg,image/png,image/webp"
           multiple
-          onChange={(e) => setImages(Array.from(e.target.files ?? []).slice(0, 4))}
+          onChange={(e) =>
+            setImages(
+              Array.from(e.target.files ?? []).slice(
+                0,
+                accounts.find((account) => account.id === accountId)?.platform === 'X' ? 4 : 1
+              )
+            )
+          }
         />
       </label>
       {images.length ? (

@@ -13,7 +13,7 @@ The integration branch currently contains:
 - a protected credential BFF and bilingual credential-management UI;
 - platform contracts, publication states, error classes, request IDs, CI, and 47 unit tests.
 
-The baseline is not yet a three-platform publishing release. X has a text-and-image publishing slice. Meta OAuth connects Facebook Pages and their linked Instagram Professional accounts, and Facebook Pages can publish text, links, or one validated image. X video and Instagram publishing remain disabled.
+The baseline now has a three-platform internal image slice: X text and up to four images, Facebook Page text/link or one image, and Instagram Professional one-image container publishing. Video, Instagram carousel/Reels, richer media processing, and production soak remain incomplete.
 
 The M1 branch work now defines account-scoped OAuth token versions, workspace-safe media ownership, publication media, an outbox/inbox persistence boundary, staged adapter execution contracts, fail-fast API configuration, and PostgreSQL/KMS readiness. These foundations remain disabled for live publishing until provider callbacks and the outbox dispatcher are connected and exercised end to end.
 
