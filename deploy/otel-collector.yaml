@@ -10,8 +10,6 @@ exporters:
   debug: { verbosity: basic }
   prometheus: { endpoint: 0.0.0.0:9464 }
 service:
-  telemetry:
-    metrics: { address: 0.0.0.0:8888 }
   pipelines:
     traces: { receivers: [otlp], processors: [memory_limiter, batch], exporters: [debug] }
     metrics:
