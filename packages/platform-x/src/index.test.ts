@@ -148,4 +148,35 @@ describe('XOAuthClient', () => {
       retryable: false,
     });
   });
+
+  it('uploads image bytes, applies alt text, and returns a media id', async () => {
+    const request = vi.fn(async (url: string | URL | Request, init?: RequestInit) =>
+      String(url).endsWith('/upload')
+        ? new Response(JSON.stringify({ data: { id: 'media-1', expires_after_secs: 86400 } }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        : new Response(JSON.stringify({ data: { id: 'media-1' } }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+    );
+    const client = new XOAuthClient({
+      clientId: 'client',
+      redirectUri: 'https://publisher.test/callback',
+      fetch: request as typeof fetch,
+    });
+    await expect(
+      client.uploadImage('access', new Uint8Array([1, 2, 3]), 'image/png', 'A blue chart')
+    ).resolves.toMatchObject({ id: 'media-1' });
+    expect(JSON.parse(String(request.mock.calls[0]?.[1]?.body))).toMatchObject({
+      media: 'AQID',
+      media_category: 'tweet_image',
+      media_type: 'image/png',
+    });
+    expect(JSON.parse(String(request.mock.calls[1]?.[1]?.body))).toMatchObject({
+      id: 'media-1',
+      metadata: { alt_text: { text: 'A blue chart' } },
+    });
+  });
 });

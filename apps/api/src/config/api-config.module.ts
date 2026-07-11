@@ -20,6 +20,10 @@ const environmentSchema = z
       .max(2_048)
       .default('http://localhost:3000/api/platform-oauth/callback'),
     PLATFORM_OAUTH_TRANSACTION_TTL_SECONDS: z.coerce.number().int().min(60).max(900).default(600),
+    MEDIA_STORAGE_PROVIDER: z.enum(['local', 's3']).default('local'),
+    MEDIA_LOCAL_ROOT: z.string().min(1).max(2_048).default('/tmp/social-publisher-media'),
+    MEDIA_S3_BUCKET: z.string().min(3).max(63).optional(),
+    MEDIA_S3_REGION: z.string().min(3).max(100).optional(),
     OIDC_ISSUER: z.string().min(1).max(2_048),
     OIDC_AUDIENCE: z.string().trim().min(1).max(500),
     OIDC_JWKS_URI: z.string().min(1).max(2_048),
@@ -75,12 +79,18 @@ const environmentSchema = z
       if (!environment.AWS_REGION) issue(context, 'AWS_REGION', 'missing_aws_region');
       if (!environment.AWS_KMS_KEY_ID) issue(context, 'AWS_KMS_KEY_ID', 'missing_aws_kms_key');
     }
+    if (environment.MEDIA_STORAGE_PROVIDER === 's3') {
+      if (!environment.MEDIA_S3_BUCKET) issue(context, 'MEDIA_S3_BUCKET', 'missing_media_bucket');
+      if (!environment.MEDIA_S3_REGION) issue(context, 'MEDIA_S3_REGION', 'missing_media_region');
+    }
 
     if (environment.NODE_ENV !== 'production') return;
 
     if (environment.CREDENTIAL_KEK_PROVIDER !== 'aws-kms') {
       issue(context, 'CREDENTIAL_KEK_PROVIDER', 'production_kms_required');
     }
+    if (environment.MEDIA_STORAGE_PROVIDER !== 's3')
+      issue(context, 'MEDIA_STORAGE_PROVIDER', 'production_s3_required');
     if (databaseUrl && isLocalHost(databaseUrl.hostname)) {
       issue(context, 'DATABASE_URL', 'production_database_must_not_be_local');
     }
@@ -128,6 +138,12 @@ export interface ApiConfig {
   readonly redisUrl: string;
   readonly webOrigin: string;
   readonly platformOAuth: { readonly callbackUrl: string; readonly transactionTtlSeconds: number };
+  readonly mediaStorage: {
+    readonly provider: 'local' | 's3';
+    readonly localRoot: string;
+    readonly bucket?: string;
+    readonly region?: string;
+  };
   readonly oidc: {
     readonly issuer: string;
     readonly audience: string;
@@ -177,6 +193,12 @@ export function parseApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
     platformOAuth: {
       callbackUrl: value.PLATFORM_OAUTH_CALLBACK_URL,
       transactionTtlSeconds: value.PLATFORM_OAUTH_TRANSACTION_TTL_SECONDS,
+    },
+    mediaStorage: {
+      provider: value.MEDIA_STORAGE_PROVIDER,
+      localRoot: value.MEDIA_LOCAL_ROOT,
+      ...(value.MEDIA_S3_BUCKET ? { bucket: value.MEDIA_S3_BUCKET } : {}),
+      ...(value.MEDIA_S3_REGION ? { region: value.MEDIA_S3_REGION } : {}),
     },
     oidc: {
       issuer: value.OIDC_ISSUER,

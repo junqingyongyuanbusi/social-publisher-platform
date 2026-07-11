@@ -357,7 +357,16 @@ function safeReturnTo(value: string): string {
   return /^\/(?:zh-CN|en-US)\/accounts(?:\?.*)?$/.test(value) ? value : '/zh-CN/accounts';
 }
 function requiredXScopes(scopes: readonly string[]): readonly string[] {
-  return [...new Set([...scopes, 'tweet.read', 'tweet.write', 'users.read', 'offline.access'])];
+  return [
+    ...new Set([
+      ...scopes,
+      'tweet.read',
+      'tweet.write',
+      'users.read',
+      'offline.access',
+      'media.write',
+    ]),
+  ];
 }
 function keyProvider(): KeyEncryptionKeyProvider {
   if ((process.env['CREDENTIAL_KEK_PROVIDER'] ?? 'local') === 'aws-kms')

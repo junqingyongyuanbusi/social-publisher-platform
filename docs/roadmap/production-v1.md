@@ -13,7 +13,7 @@ The integration branch currently contains:
 - a protected credential BFF and bilingual credential-management UI;
 - platform contracts, publication states, error classes, request IDs, CI, and 47 unit tests.
 
-The baseline is not yet a three-platform publishing release. X now has a text-post vertical slice: UI/API content and publication creation, scheduling, transactional outbox dispatch, encrypted token refresh, remote publish, attempt persistence, retry classification, unknown-result quarantine, history, cancellation, and manual retry. X media and both Meta executors remain disabled.
+The baseline is not yet a three-platform publishing release. X now has a text-and-image vertical slice: validated private media ingestion, UI/API content and publication creation, scheduling, transactional outbox dispatch, encrypted token refresh, remote media upload and publish, attempt persistence, retry classification, unknown-result quarantine, history, cancellation, and manual retry. X video and both Meta executors remain disabled.
 
 The M1 branch work now defines account-scoped OAuth token versions, workspace-safe media ownership, publication media, an outbox/inbox persistence boundary, staged adapter execution contracts, fail-fast API configuration, and PostgreSQL/KMS readiness. These foundations remain disabled for live publishing until provider callbacks and the outbox dispatcher are connected and exercised end to end.
 

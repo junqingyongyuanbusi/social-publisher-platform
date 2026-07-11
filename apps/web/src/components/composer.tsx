@@ -19,6 +19,8 @@ export function Composer() {
   const [title, setTitle] = useState('');
   const [text, setText] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
+  const [images, setImages] = useState<File[]>([]);
+  const [altText, setAltText] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -39,7 +41,7 @@ export function Composer() {
   async function select(id: string) {
     setWorkspaceId(id);
     const rows = await json<Account[]>(`/api/bff/workspaces/${id}/social-accounts`);
-    const active = rows.filter((x) => x.status === 'ACTIVE');
+    const active = rows.filter((x) => x.status === 'ACTIVE' && x.platform === 'X');
     setAccounts(active);
     setAccountId(active[0]?.id ?? '');
   }
@@ -50,6 +52,17 @@ export function Composer() {
     setError('');
     setMessage('');
     try {
+      const media: { mediaAssetId: string; position: number; altText: string | null }[] = [];
+      for (const [position, file] of images.entries()) {
+        const form = new FormData();
+        form.set('file', file);
+        if (altText) form.set('altText', altText);
+        const asset = await json<{ id: string }>(
+          `/api/bff/workspaces/${workspaceId}/media-assets`,
+          { method: 'POST', headers: csrfHeader(), body: form }
+        );
+        media.push({ mediaAssetId: asset.id, position, altText: altText || null });
+      }
       const content = await json<{ versions: { id: string }[] }>(
         `/api/bff/workspaces/${workspaceId}/contents`,
         {
@@ -68,7 +81,7 @@ export function Composer() {
           text,
           contentLocale: locale,
           ...(scheduledAt ? { scheduledAt: new Date(scheduledAt).toISOString() } : {}),
-          media: [],
+          media,
           settings: { platform: account!.platform.toLowerCase() },
         }),
       });
@@ -76,6 +89,8 @@ export function Composer() {
       setTitle('');
       setText('');
       setScheduledAt('');
+      setImages([]);
+      setAltText('');
     } catch (e) {
       setError(msg(e));
     } finally {
@@ -130,6 +145,29 @@ export function Composer() {
           onChange={(e) => setScheduledAt(e.target.value)}
         />
       </label>
+      <label>
+        {t('images')}
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          multiple
+          onChange={(e) => setImages(Array.from(e.target.files ?? []).slice(0, 4))}
+        />
+      </label>
+      {images.length ? (
+        <>
+          <small>{t('imageCount', { count: images.length })}</small>
+          <label>
+            {t('altText')}
+            <input
+              value={altText}
+              maxLength={1000}
+              onChange={(e) => setAltText(e.target.value)}
+              placeholder={t('altPlaceholder')}
+            />
+          </label>
+        </>
+      ) : null}
       {error ? <p className="alert errorAlert">{error}</p> : null}
       {message ? <p className="alert successAlert">{message}</p> : null}
       <button className="button" disabled={busy || !accountId || !text.trim()}>
@@ -150,6 +188,14 @@ function headers() {
       .find((v) => v.startsWith('social_csrf='))
       ?.split('=')[1] ?? '';
   return { 'content-type': 'application/json', 'x-csrf-token': decodeURIComponent(token) };
+}
+function csrfHeader() {
+  const token =
+    document.cookie
+      .split('; ')
+      .find((v) => v.startsWith('social_csrf='))
+      ?.split('=')[1] ?? '';
+  return { 'x-csrf-token': decodeURIComponent(token) };
 }
 function msg(e: unknown) {
   return e instanceof Error ? e.message : 'request_failed';

@@ -14,6 +14,7 @@ export const X_API_ENDPOINTS = {
   createPost: 'https://api.x.com/2/tweets',
   uploadMedia: 'https://api.x.com/2/media/upload',
   initializeMedia: 'https://api.x.com/2/media/upload/initialize',
+  mediaMetadata: 'https://api.x.com/2/media/metadata',
 } as const;
 
 export interface XOAuthClientOptions {
@@ -40,6 +41,11 @@ export interface XUser {
 export interface XPost {
   readonly id: string;
   readonly text: string;
+}
+export interface XUploadedMedia {
+  readonly id: string;
+  readonly expiresAfterSeconds: number;
+  readonly platformRequestId?: string;
 }
 
 export class XApiError extends Error {
@@ -153,6 +159,81 @@ export class XOAuthClient {
     if (!id)
       throw new XApiError('x_create_post_response_invalid', 502, false, true, undefined, requestId);
     return { id, text, ...(requestId ? { platformRequestId: requestId } : {}) };
+  }
+
+  async uploadImage(
+    accessToken: string,
+    bytes: Uint8Array,
+    mimeType: 'image/jpeg' | 'image/png' | 'image/webp',
+    altText?: string,
+    signal?: AbortSignal
+  ): Promise<XUploadedMedia> {
+    let response: Response;
+    try {
+      response = await this.request(X_API_ENDPOINTS.uploadMedia, {
+        method: 'POST',
+        ...(signal ? { signal } : {}),
+        headers: {
+          authorization: `Bearer ${accessToken}`,
+          'content-type': 'application/json',
+          accept: 'application/json',
+        },
+        body: JSON.stringify({
+          media: Buffer.from(bytes).toString('base64'),
+          media_category: 'tweet_image',
+          media_type: mimeType,
+          shared: false,
+        }),
+      });
+    } catch {
+      throw new XApiError('x_media_upload_unavailable', 0, true);
+    }
+    const requestId = response.headers.get('x-request-id') ?? undefined;
+    const payload = await readJson(response);
+    if (!response.ok) throw responseError('x_media_upload_failed', response, requestId);
+    const data = record(payload.data);
+    const id = string(data.id);
+    const expiresAfterSeconds = number(data.expires_after_secs);
+    if (!id)
+      throw new XApiError(
+        'x_media_upload_response_invalid',
+        502,
+        true,
+        false,
+        undefined,
+        requestId
+      );
+    if (altText?.trim()) await this.setImageAltText(accessToken, id, altText.trim(), signal);
+    return { id, expiresAfterSeconds, ...(requestId ? { platformRequestId: requestId } : {}) };
+  }
+
+  private async setImageAltText(
+    accessToken: string,
+    mediaId: string,
+    altText: string,
+    signal?: AbortSignal
+  ): Promise<void> {
+    let response: Response;
+    try {
+      response = await this.request(X_API_ENDPOINTS.mediaMetadata, {
+        method: 'POST',
+        ...(signal ? { signal } : {}),
+        headers: {
+          authorization: `Bearer ${accessToken}`,
+          'content-type': 'application/json',
+          accept: 'application/json',
+        },
+        body: JSON.stringify({ id: mediaId, metadata: { alt_text: { text: altText } } }),
+      });
+    } catch {
+      throw new XApiError('x_media_metadata_unavailable', 0, true);
+    }
+    if (!response.ok)
+      throw responseError(
+        'x_media_metadata_failed',
+        response,
+        response.headers.get('x-request-id') ?? undefined
+      );
   }
 
   async getPost(

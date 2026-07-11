@@ -1,4 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
+import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { Queue, Worker, type Job } from 'bullmq';
 import { Redis } from 'ioredis';
 import {
@@ -47,7 +50,7 @@ async function execute(job: Job<PublicationJob>): Promise<void> {
       where: { id: publicationId, workspaceId },
       include: {
         socialAccount: { include: { oauthConnection: { include: { platformApp: true } } } },
-        media: true,
+        media: { include: { mediaAsset: true }, orderBy: { position: 'asc' } },
       },
     });
     if (
@@ -118,15 +121,42 @@ async function execute(job: Job<PublicationJob>): Promise<void> {
   try {
     if (claimed.publication.platform !== 'X')
       throw new XApiError('platform_executor_not_implemented', 501);
-    if (claimed.publication.media.length > 0)
-      throw new XApiError('x_media_pipeline_not_ready', 422);
-    const result = await withValidXAccessToken(claimed.connection, async (client, accessToken) =>
-      client.createPost(
+    const result = await withValidXAccessToken(claimed.connection, async (client, accessToken) => {
+      const mediaIds: string[] = [];
+      for (const item of claimed.publication.media) {
+        if (
+          item.mediaAsset.kind !== 'IMAGE' ||
+          !['image/jpeg', 'image/png', 'image/webp'].includes(item.mediaAsset.mimeType)
+        )
+          throw new XApiError('x_media_unsupported', 422);
+        const bytes = await readMedia(item.mediaAsset);
+        try {
+          const uploaded = await client.uploadImage(
+            accessToken,
+            bytes,
+            item.mediaAsset.mimeType as 'image/jpeg' | 'image/png' | 'image/webp',
+            item.altText ?? undefined,
+            AbortSignal.timeout(30_000)
+          );
+          mediaIds.push(uploaded.id);
+          await prisma.publicationMedia.update({
+            where: { id: item.id },
+            data: { remoteMediaId: uploaded.id },
+          });
+        } finally {
+          bytes.fill(0);
+        }
+      }
+      return client.createPost(
         accessToken,
-        { text: claimed.publication.text, ...replySetting(claimed.publication.settings) },
+        {
+          text: claimed.publication.text,
+          ...replySetting(claimed.publication.settings),
+          ...(mediaIds.length ? { mediaIds } : {}),
+        },
         AbortSignal.timeout(20_000)
-      )
-    );
+      );
+    });
     await prisma.$transaction([
       prisma.publicationAttempt.update({
         where: { id: claimed.attempt.id },
@@ -476,6 +506,44 @@ function replySetting(value: unknown): { replyToId?: string } {
   )
     return { replyToId: value.replyToId };
   return {};
+}
+async function readMedia(asset: {
+  storageProvider: string;
+  storageBucket: string;
+  storageKey: string;
+  sizeBytes: bigint;
+}): Promise<Uint8Array> {
+  if (asset.sizeBytes > 10n * 1024n * 1024n) throw new XApiError('x_media_too_large', 422);
+  if (asset.storageProvider === 's3') {
+    const client = new S3Client({
+      region: process.env['MEDIA_S3_REGION'] ?? process.env['AWS_REGION'] ?? 'us-east-1',
+      ...(process.env['MEDIA_S3_ENDPOINT']
+        ? { endpoint: process.env['MEDIA_S3_ENDPOINT'], forcePathStyle: true }
+        : {}),
+    });
+    try {
+      const result = await client.send(
+        new GetObjectCommand({ Bucket: asset.storageBucket, Key: asset.storageKey })
+      );
+      if (!result.Body) throw new Error('empty');
+      return new Uint8Array(await result.Body.transformToByteArray());
+    } catch {
+      throw new XApiError('media_storage_unavailable', 503, true);
+    } finally {
+      client.destroy();
+    }
+  }
+  if (asset.storageProvider === 'local') {
+    const root = resolve(asset.storageBucket);
+    const target = join(root, asset.storageKey);
+    if (!target.startsWith(`${root}/`)) throw new XApiError('media_storage_key_invalid', 500);
+    try {
+      return new Uint8Array(await readFile(target));
+    } catch {
+      throw new XApiError('media_storage_unavailable', 503, true);
+    }
+  }
+  throw new XApiError('media_storage_provider_unsupported', 500);
 }
 function delay(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));

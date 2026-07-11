@@ -46,7 +46,11 @@
     "schedule": "Publish time (leave empty for now)",
     "publish": "Create publication",
     "saving": "Creating…",
-    "created": "Publication created. Track its execution on the Publications page."
+    "created": "Publication created. Track its execution on the Publications page.",
+    "images": "Images (up to 4)",
+    "imageCount": "{count} images selected",
+    "altText": "Image alt text",
+    "altPlaceholder": "Describe the images for people using screen readers"
   },
   "publications": {
     "eyebrow": "Operations center",

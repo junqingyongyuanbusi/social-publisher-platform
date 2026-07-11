@@ -14,6 +14,8 @@
 
 Publication creation stores the immutable content reference, target account, schedule, and an outbox event in one PostgreSQL transaction. The worker dispatcher uses deterministic BullMQ job identifiers, pins the active OAuth token version to each attempt, calls `POST /2/tweets`, and persists remote post and request identifiers. HTTP 429 and 5xx responses enter bounded retry scheduling; 401/403 requires reauthorization. A transport failure after issuing POST enters `RESULT_UNKNOWN` and is never blindly re-posted.
 
+For image posts, the API decodes and inspects JPEG, PNG, or WebP uploads, calculates a SHA-256 checksum, and stores the original in private S3 storage in production. The worker reads the object with workload credentials, uploads each image to `POST /2/media/upload` as `tweet_image`, applies optional alt text through `POST /2/media/metadata`, persists every returned media ID, and supplies up to four IDs to `POST /2/tweets`. Connected X accounts must grant `media.write`; accounts authorized before this scope was introduced must reconnect.
+
 X platform applications must register the exact value stored in `PlatformApp.redirectUri`. Required scopes for the first publishing slice are `tweet.read`, `tweet.write`, `users.read`, and `offline.access`; configured extra scopes such as `media.write` are preserved. Web and automated applications should store an active `app_secret` credential. Public clients are also supported through PKCE without a secret.
 
 ## Operational failure codes

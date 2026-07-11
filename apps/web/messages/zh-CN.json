@@ -43,7 +43,11 @@
     "schedule": "发布时间（留空则立即发布）",
     "publish": "创建发布任务",
     "saving": "正在创建…",
-    "created": "发布任务已创建，可在发布任务页面查看执行结果。"
+    "created": "发布任务已创建，可在发布任务页面查看执行结果。",
+    "images": "图片（最多 4 张）",
+    "imageCount": "已选择 {count} 张图片",
+    "altText": "图片替代文本",
+    "altPlaceholder": "描述图片内容，帮助使用屏幕阅读器的用户"
   },
   "publications": {
     "eyebrow": "运行中心",
