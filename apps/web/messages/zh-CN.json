@@ -31,6 +31,19 @@
     "empty": "首个版本使用演示数据；接入数据库后将在这里显示实时任务。"
   },
   "status": { "published": "已发布", "scheduled": "已排期", "failed": "失败" },
+  "accounts": {
+    "eyebrow": "连接中心",
+    "title": "社媒账号",
+    "subtitle": "授权、查看和断开各平台账号。授权令牌由服务端加密保存，不进入浏览器存储。",
+    "workspace": "工作区",
+    "connect": "连接平台应用",
+    "authorize": "使用 X 授权",
+    "comingSoon": "下一阶段接入",
+    "connected": "已连接账号",
+    "empty": "当前工作区还没有连接社媒账号。",
+    "disconnect": "断开连接",
+    "confirmDisconnect": "确定断开此账号？后续发布将停止。"
+  },
   "credentials": {
     "eyebrow": "安全控制台",
     "title": "凭据中心",

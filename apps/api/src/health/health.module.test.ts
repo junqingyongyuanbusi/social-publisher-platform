@@ -8,6 +8,7 @@ const config: ApiConfig = parseApiConfig({
   NODE_ENV: 'test',
   API_READINESS_TIMEOUT_MS: '100',
   DATABASE_URL: 'postgresql://social:social@localhost:5432/social_publisher',
+  REDIS_URL: 'redis://localhost:6379',
   WEB_ORIGIN: 'http://localhost:3000',
   OIDC_ISSUER: 'http://localhost:8080/realms/social-publisher',
   OIDC_AUDIENCE: 'social-publisher-api',

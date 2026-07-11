@@ -24,6 +24,7 @@
     "@social/platform-facebook": "workspace:*",
     "@social/platform-instagram": "workspace:*",
     "@social/platform-x": "workspace:*",
+    "ioredis": "5.9.3",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",
     "zod": "4.4.3"

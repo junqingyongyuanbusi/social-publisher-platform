@@ -12,7 +12,14 @@ const environmentSchema = z
     API_READINESS_TIMEOUT_MS: z.coerce.number().int().min(100).max(5_000).default(1_000),
     ENABLE_SWAGGER: z.enum(['true', 'false']).default('false'),
     DATABASE_URL: z.string().min(1).max(4_096),
+    REDIS_URL: z.string().min(1).max(4_096),
     WEB_ORIGIN: z.string().min(1).max(2_048).default('http://localhost:3000'),
+    PLATFORM_OAUTH_CALLBACK_URL: z
+      .string()
+      .min(1)
+      .max(2_048)
+      .default('http://localhost:3000/api/platform-oauth/callback'),
+    PLATFORM_OAUTH_TRANSACTION_TTL_SECONDS: z.coerce.number().int().min(60).max(900).default(600),
     OIDC_ISSUER: z.string().min(1).max(2_048),
     OIDC_AUDIENCE: z.string().trim().min(1).max(500),
     OIDC_JWKS_URI: z.string().min(1).max(2_048),
@@ -33,11 +40,16 @@ const environmentSchema = z
     if (!databaseUrl || !['postgres:', 'postgresql:'].includes(databaseUrl.protocol)) {
       issue(context, 'DATABASE_URL', 'invalid_database_url');
     }
+    const redisUrl = safeRedisUrl(environment.REDIS_URL);
+    if (!redisUrl) issue(context, 'REDIS_URL', 'invalid_redis_url');
 
     const webOrigin = safeHttpUrl(environment.WEB_ORIGIN);
     if (!webOrigin || !isOriginOnly(webOrigin)) {
       issue(context, 'WEB_ORIGIN', 'invalid_web_origin');
     }
+    const oauthCallbackUrl = safeHttpUrl(environment.PLATFORM_OAUTH_CALLBACK_URL);
+    if (!oauthCallbackUrl)
+      issue(context, 'PLATFORM_OAUTH_CALLBACK_URL', 'invalid_oauth_callback_url');
 
     const issuer = safeHttpUrl(environment.OIDC_ISSUER);
     if (!issuer) issue(context, 'OIDC_ISSUER', 'invalid_oidc_issuer');
@@ -72,6 +84,15 @@ const environmentSchema = z
     if (databaseUrl && isLocalHost(databaseUrl.hostname)) {
       issue(context, 'DATABASE_URL', 'production_database_must_not_be_local');
     }
+    if (redisUrl && isLocalHost(redisUrl.hostname))
+      issue(context, 'REDIS_URL', 'production_redis_must_not_be_local');
+    if (
+      !oauthCallbackUrl ||
+      oauthCallbackUrl.protocol !== 'https:' ||
+      isLocalHost(oauthCallbackUrl.hostname)
+    ) {
+      issue(context, 'PLATFORM_OAUTH_CALLBACK_URL', 'production_oauth_callback_invalid');
+    }
     if (
       !webOrigin ||
       webOrigin.protocol !== 'https:' ||
@@ -104,7 +125,9 @@ export interface ApiConfig {
   readonly readinessTimeoutMs: number;
   readonly swaggerEnabled: boolean;
   readonly databaseUrl: string;
+  readonly redisUrl: string;
   readonly webOrigin: string;
+  readonly platformOAuth: { readonly callbackUrl: string; readonly transactionTtlSeconds: number };
   readonly oidc: {
     readonly issuer: string;
     readonly audience: string;
@@ -149,7 +172,12 @@ export function parseApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
     readinessTimeoutMs: value.API_READINESS_TIMEOUT_MS,
     swaggerEnabled: value.NODE_ENV !== 'production' || value.ENABLE_SWAGGER === 'true',
     databaseUrl: value.DATABASE_URL,
+    redisUrl: value.REDIS_URL,
     webOrigin: new URL(value.WEB_ORIGIN).origin,
+    platformOAuth: {
+      callbackUrl: value.PLATFORM_OAUTH_CALLBACK_URL,
+      transactionTtlSeconds: value.PLATFORM_OAUTH_TRANSACTION_TTL_SECONDS,
+    },
     oidc: {
       issuer: value.OIDC_ISSUER,
       audience: value.OIDC_AUDIENCE,
@@ -204,6 +232,15 @@ function safeHttpUrl(value: string): URL | null {
     const url = new URL(value);
     if (url.username || url.password || !['http:', 'https:'].includes(url.protocol)) return null;
     return url;
+  } catch {
+    return null;
+  }
+}
+
+function safeRedisUrl(value: string): URL | null {
+  try {
+    const url = new URL(value);
+    return ['redis:', 'rediss:'].includes(url.protocol) ? url : null;
   } catch {
     return null;
   }

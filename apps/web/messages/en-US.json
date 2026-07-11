@@ -34,6 +34,19 @@
     "empty": "This foundation uses demo data. Live jobs appear here after persistence is connected."
   },
   "status": { "published": "Published", "scheduled": "Scheduled", "failed": "Failed" },
+  "accounts": {
+    "eyebrow": "Connection center",
+    "title": "Social accounts",
+    "subtitle": "Authorize, inspect, and disconnect platform accounts. Tokens are encrypted server-side and never stored in the browser.",
+    "workspace": "Workspace",
+    "connect": "Connect a platform app",
+    "authorize": "Authorize with X",
+    "comingSoon": "Next integration",
+    "connected": "Connected accounts",
+    "empty": "No social account is connected in this workspace.",
+    "disconnect": "Disconnect",
+    "confirmDisconnect": "Disconnect this account? Future publishing will stop."
+  },
   "credentials": {
     "eyebrow": "Security console",
     "title": "Credential center",
