@@ -282,6 +282,72 @@ h1 {
   cursor: not-allowed;
   opacity: 0.55;
 }
+.diagnosticsLayout {
+  display: grid;
+  gap: 16px;
+}
+.diagnosticFilters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  gap: 12px;
+  align-items: end;
+}
+.diagnosticFilters label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.diagnosticFilters input,
+.diagnosticFilters select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 10px;
+  font: inherit;
+  background: white;
+}
+.diagnosticColumns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 16px;
+}
+.diagnosticRow {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--line);
+  padding: 14px 0;
+  color: inherit;
+}
+.diagnosticRow span:first-child {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.diagnosticRow small,
+.timelineItem small {
+  display: block;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.timelineItem {
+  border-left: 3px solid var(--brand);
+  padding: 8px 0 8px 12px;
+  margin: 12px 0;
+  display: grid;
+  gap: 4px;
+}
+@media (max-width: 900px) {
+  .diagnosticFilters,
+  .diagnosticColumns {
+    grid-template-columns: 1fr;
+  }
+}
 .formHint,
 .securityNote {
   color: var(--muted);

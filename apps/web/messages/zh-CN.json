@@ -61,6 +61,25 @@
     "cancel": "取消",
     "retry": "重试"
   },
+  "diagnostics": {
+    "eyebrow": "运维中心",
+    "title": "诊断中心",
+    "subtitle": "通过发布 ID 串联队列、执行尝试、Token 版本和平台请求。",
+    "workspace": "工作区",
+    "platform": "平台",
+    "status": "状态",
+    "search": "搜索",
+    "searchHint": "发布 ID、平台 ID 或正文",
+    "all": "全部",
+    "apply": "查询",
+    "successRate": "24 小时成功率",
+    "attention": "需要处理",
+    "published": "已发布",
+    "outboxPending": "待分发事件",
+    "results": "发布结果",
+    "timeline": "执行时间线",
+    "selectOne": "选择一条发布记录查看完整诊断链路。"
+  },
   "accounts": {
     "eyebrow": "连接中心",
     "title": "社媒账号",

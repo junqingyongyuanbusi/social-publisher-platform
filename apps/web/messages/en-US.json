@@ -64,6 +64,25 @@
     "cancel": "Cancel",
     "retry": "Retry"
   },
+  "diagnostics": {
+    "eyebrow": "Operations center",
+    "title": "Diagnostics",
+    "subtitle": "Trace a publication across queue events, attempts, token versions, and provider requests.",
+    "workspace": "Workspace",
+    "platform": "Platform",
+    "status": "Status",
+    "search": "Search",
+    "searchHint": "Publication ID, provider ID, or text",
+    "all": "All",
+    "apply": "Apply",
+    "successRate": "24h success rate",
+    "attention": "Needs attention",
+    "published": "Published",
+    "outboxPending": "Pending outbox",
+    "results": "Publication results",
+    "timeline": "Execution timeline",
+    "selectOne": "Select a publication to inspect its complete diagnostic chain."
+  },
   "accounts": {
     "eyebrow": "Connection center",
     "title": "Social accounts",
