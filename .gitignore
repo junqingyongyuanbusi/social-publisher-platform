@@ -1,0 +1,17 @@
+node_modules/
+.pnpm-store/
+.next/
+dist/
+coverage/
+.turbo/
+.env
+.env.*
+!.env.example
+!deploy/.env.production.example
+deploy/secrets/
+*.log
+*.tsbuildinfo
+.DS_Store
+.idea/
+.vscode/
+packages/database/prisma/*.db

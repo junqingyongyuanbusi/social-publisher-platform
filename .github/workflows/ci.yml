@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: postgresql://social@localhost:5432/social_publisher
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: social
+          POSTGRES_DB: social_publisher
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U social -d social_publisher"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.6.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.20.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @social/database prisma:deploy
+      - run: pnpm format:check
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm --filter @social/database test:integration
+      - run: pnpm build
+      - run: pnpm audit --audit-level high
+      - name: Validate production Compose configuration
+        run: |
+          cp deploy/.env.production.example deploy/.env.production
+          mkdir -p deploy/secrets
+          printf 'ci-only\n' > deploy/secrets/postgres_password
+          printf 'ci-only\n' > deploy/secrets/redis_password
+          printf 'ci-only\n' > deploy/secrets/keycloak_db_password
+          printf 'ci-only\n' > deploy/secrets/keycloak_admin_password
+          IMAGE_TAG="$GITHUB_SHA" docker compose -f deploy/compose.production.yml config --quiet
+      - name: Validate observability configuration
+        run: |
+          docker run --rm --entrypoint /bin/promtool -v "$PWD/deploy:/etc/prometheus:ro" prom/prometheus:v3.5.0 check config /etc/prometheus/prometheus.yml
+          docker run --rm -v "$PWD/deploy/otel-collector.yaml:/etc/otelcol/config.yaml:ro" otel/opentelemetry-collector-contrib:0.130.1 validate --config=/etc/otelcol/config.yaml
+      - name: Validate Keycloak realm and discovery
+        run: |
+          trap 'docker compose down --volumes' EXIT
+          export POSTGRES_PASSWORD="$(openssl rand -hex 24)"
+          export KEYCLOAK_DB_PASSWORD="$(openssl rand -hex 24)"
+          export KEYCLOAK_ADMIN_PASSWORD="$(openssl rand -hex 24)"
+          export KEYCLOAK_OWNER_PASSWORD="$(openssl rand -hex 24)"
+          docker compose up -d --build --wait --wait-timeout 180 keycloak
+          curl --fail --silent --show-error http://127.0.0.1:8080/realms/social-publisher/.well-known/openid-configuration > /dev/null
+          docker compose up --abort-on-container-exit --exit-code-from keycloak-bootstrap keycloak-bootstrap
+      - name: Build production images
+        run: |
+          docker build --target api --tag social-publisher-api:"$GITHUB_SHA" .
+          docker build --target worker --tag social-publisher-worker:"$GITHUB_SHA" .
+          docker build --target web --tag social-publisher-web:"$GITHUB_SHA" .
+          docker build --tag social-publisher-keycloak:"$GITHUB_SHA" deploy/keycloak
