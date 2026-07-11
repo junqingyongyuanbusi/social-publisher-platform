@@ -8,7 +8,7 @@ const context: CredentialContext = {
   credentialId: 'credential-1',
   workspaceId: 'workspace-1',
   platformAppId: 'platform-app-1',
-  credentialType: 'oauth_refresh_token',
+  credentialType: 'app_secret',
 };
 
 function createCipher(): CredentialEnvelopeCipher {

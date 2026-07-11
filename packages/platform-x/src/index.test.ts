@@ -10,7 +10,7 @@ describe('XAdapter', () => {
         publicationId: 'p',
         accountId: 'a',
         text: '',
-        mediaUrls: [],
+        media: [],
         settings: {},
       })
     ).toHaveLength(1);

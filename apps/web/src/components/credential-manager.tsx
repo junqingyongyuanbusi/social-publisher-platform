@@ -29,7 +29,7 @@ export function CredentialManager() {
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [workspaceId, setWorkspaceId] = useState('');
   const [platformAppId, setPlatformAppId] = useState('');
-  const [credentialType, setCredentialType] = useState('oauth_refresh_token');
+  const [credentialType, setCredentialType] = useState('app_secret');
   const [secret, setSecret] = useState('');
   const [scopes, setScopes] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
@@ -179,10 +179,9 @@ export function CredentialManager() {
               value={credentialType}
               onChange={(event) => setCredentialType(event.target.value)}
             >
-              <option value="oauth_refresh_token">OAuth refresh token</option>
-              <option value="oauth_access_token">OAuth access token</option>
               <option value="app_secret">App secret</option>
               <option value="api_key">API key</option>
+              <option value="webhook_secret">Webhook secret</option>
             </select>
           </label>
           <label>

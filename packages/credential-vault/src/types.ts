@@ -6,6 +6,13 @@ export interface CredentialContext {
   readonly workspaceId: string;
   readonly platformAppId: string;
   readonly credentialType: string;
+  /** Optional v2 binding for account-scoped authorization material. */
+  readonly binding?: CredentialBinding;
+}
+
+export interface CredentialBinding {
+  readonly type: 'OAUTH_CONNECTION';
+  readonly id: string;
 }
 
 export interface WrappedDataKey {

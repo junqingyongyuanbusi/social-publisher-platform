@@ -15,6 +15,8 @@ The integration branch currently contains:
 
 The baseline is not a publishing release. Each platform adapter and the worker executor still fails closed, and the publication API currently validates only.
 
+The M1 branch work now defines account-scoped OAuth token versions, workspace-safe media ownership, publication media, an outbox/inbox persistence boundary, staged adapter execution contracts, fail-fast API configuration, and PostgreSQL/KMS readiness. These foundations remain disabled for live publishing until provider callbacks and the outbox dispatcher are connected and exercised end to end.
+
 ## Frozen internal-MVP matrix
 
 Only capabilities with real sandbox/test-account end-to-end coverage may be advertised by the API or UI.

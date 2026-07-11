@@ -40,8 +40,10 @@ class CredentialsController {
     @Req() request: AuthenticatedRequest
   ) {
     const parsed = putCredentialSchema.safeParse(body);
-    if (!parsed.success)
+    if (!parsed.success) {
+      redactRequestSecret(body);
       throw new CredentialVaultError('credential_input_invalid', 'Invalid input');
+    }
     const ownedSecret = Buffer.from(parsed.data.secret, 'utf8');
     try {
       return await this.credentials.put({
@@ -56,9 +58,7 @@ class CredentialsController {
       });
     } finally {
       ownedSecret.fill(0);
-      if (body !== null && typeof body === 'object' && 'secret' in body) {
-        Reflect.set(body, 'secret', '[REDACTED]');
-      }
+      redactRequestSecret(body);
     }
   }
 
@@ -122,4 +122,10 @@ function required(name: string): string {
   const value = process.env[name];
   if (!value) throw new Error(`Required environment variable ${name} is missing`);
   return value;
+}
+
+function redactRequestSecret(body: unknown): void {
+  if (body !== null && typeof body === 'object' && 'secret' in body) {
+    Reflect.set(body, 'secret', '[REDACTED]');
+  }
 }

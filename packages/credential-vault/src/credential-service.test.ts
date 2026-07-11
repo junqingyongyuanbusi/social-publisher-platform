@@ -89,7 +89,7 @@ function fixture() {
 const base = {
   workspaceId: 'workspace-1',
   platformAppId: 'x-app-1',
-  credentialType: 'oauth_refresh_token',
+  credentialType: 'app_secret',
   scopes: ['tweet.write', 'users.read', 'tweet.write'],
   expiresAt: null,
   actorId: 'admin-1',

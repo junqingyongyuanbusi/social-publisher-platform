@@ -17,26 +17,26 @@ export class InstagramAdapter implements PlatformAdapter {
       video: { enabled: true },
       carousel: true,
       reels: true,
-      stories: true,
+      stories: false,
       delete: false,
     };
   }
 
   public validate(draft: PlatformDraft): readonly ValidationIssue[] {
-    if (draft.mediaUrls.length === 0) {
+    if (draft.media.length === 0) {
       return [
         {
           code: 'IG_MEDIA_REQUIRED',
-          path: 'mediaUrls',
+          path: 'media',
           messageKey: 'errors.instagram.mediaRequired',
         },
       ];
     }
-    if (draft.mediaUrls.length > 10) {
+    if (draft.media.length > 10) {
       return [
         {
           code: 'IG_TOO_MANY_MEDIA',
-          path: 'mediaUrls',
+          path: 'media',
           messageKey: 'errors.instagram.tooManyMedia',
         },
       ];

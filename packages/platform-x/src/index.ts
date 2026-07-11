@@ -31,14 +31,22 @@ export class XAdapter implements PlatformAdapter {
 
   public validate(draft: PlatformDraft): readonly ValidationIssue[] {
     const issues: ValidationIssue[] = [];
-    if (!draft.text.trim() && draft.mediaUrls.length === 0) {
+    if (!draft.text.trim() && draft.media.length === 0) {
       issues.push({ code: 'X_EMPTY_POST', path: 'text', messageKey: 'errors.x.emptyPost' });
     }
-    if (draft.mediaUrls.length > 4) {
+    if (draft.media.length > 4) {
       issues.push({
         code: 'X_TOO_MANY_MEDIA',
-        path: 'mediaUrls',
+        path: 'media',
         messageKey: 'errors.x.tooManyMedia',
+      });
+    }
+    const videos = draft.media.filter(({ kind }) => kind === 'VIDEO').length;
+    if (videos > 1 || (videos === 1 && draft.media.length > 1)) {
+      issues.push({
+        code: 'X_MEDIA_COMBINATION_INVALID',
+        path: 'media',
+        messageKey: 'errors.x.mediaCombinationInvalid',
       });
     }
     return issues;

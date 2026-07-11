@@ -1,4 +1,9 @@
-import { DecryptCommand, GenerateDataKeyCommand, KMSClient } from '@aws-sdk/client-kms';
+import {
+  DecryptCommand,
+  DescribeKeyCommand,
+  GenerateDataKeyCommand,
+  KMSClient,
+} from '@aws-sdk/client-kms';
 import {
   CredentialVaultError,
   type CredentialContext,
@@ -96,6 +101,26 @@ export function createAwsKmsClient(region: string): KMSClient {
   return new KMSClient({ region, maxAttempts: 3 });
 }
 
+/** Non-mutating readiness check. The workload role requires kms:DescribeKey on this key. */
+export async function checkAwsKmsKey(client: KMSClient, keyId: string): Promise<void> {
+  try {
+    const { KeyMetadata: metadata } = await client.send(new DescribeKeyCommand({ KeyId: keyId }));
+    if (
+      !metadata?.Enabled ||
+      metadata.KeyState !== 'Enabled' ||
+      metadata.KeyUsage !== 'ENCRYPT_DECRYPT' ||
+      metadata.KeySpec !== 'SYMMETRIC_DEFAULT'
+    ) {
+      throw new CredentialVaultError('aws_kms_key_unavailable', 'AWS KMS key is unavailable');
+    }
+  } catch (error) {
+    if (error instanceof CredentialVaultError) throw error;
+    throw new CredentialVaultError('aws_kms_key_unavailable', 'AWS KMS key is unavailable', {
+      cause: error,
+    });
+  }
+}
+
 function encryptionContext(context: CredentialContext): Record<string, string> {
   return {
     application: 'social-publisher',
@@ -103,5 +128,8 @@ function encryptionContext(context: CredentialContext): Record<string, string> {
     workspace_id: context.workspaceId,
     platform_app_id: context.platformAppId,
     credential_type: context.credentialType,
+    ...(context.binding
+      ? { binding_type: context.binding.type, binding_id: context.binding.id }
+      : {}),
   };
 }

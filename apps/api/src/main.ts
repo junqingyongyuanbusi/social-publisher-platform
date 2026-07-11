@@ -4,12 +4,14 @@ import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import type { NextFunction, Request, Response } from 'express';
 import { AppModule } from './app.module.js';
+import { API_CONFIG, type ApiConfig } from './config/api-config.module.js';
 import { ProblemDetailsFilter } from './shared/problem-details.filter.js';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const runtime = app.get<ApiConfig>(API_CONFIG);
   app.setGlobalPrefix('api/v1');
-  app.enableCors({ origin: process.env['WEB_ORIGIN'] ?? 'http://localhost:3000' });
+  app.enableCors({ origin: runtime.webOrigin, credentials: false });
   app.use((request: Request, response: Response, next: NextFunction) => {
     const requestId = request.header('x-request-id') ?? randomUUID();
     response.setHeader('x-request-id', requestId);
@@ -18,7 +20,7 @@ async function bootstrap(): Promise<void> {
   });
   app.useGlobalFilters(new ProblemDetailsFilter());
 
-  if (process.env['NODE_ENV'] !== 'production' || process.env['ENABLE_SWAGGER'] === 'true') {
+  if (runtime.swaggerEnabled) {
     const config = new DocumentBuilder()
       .setTitle('Social Publisher API')
       .setDescription('Versioned API for Instagram, Facebook Pages, and X publishing')
@@ -28,7 +30,7 @@ async function bootstrap(): Promise<void> {
     SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, config));
   }
 
-  await app.listen(Number(process.env['API_PORT'] ?? 3001));
+  await app.listen(runtime.port);
 }
 
 void bootstrap();

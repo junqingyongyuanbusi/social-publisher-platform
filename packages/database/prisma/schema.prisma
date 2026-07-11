@@ -13,6 +13,24 @@ enum Platform {
   INSTAGRAM
 }
 
+enum DeploymentEnvironment {
+  DEVELOPMENT
+  STAGING
+  PRODUCTION
+}
+
+enum PlatformAppStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum SocialAccountStatus {
+  ACTIVE
+  REAUTH_REQUIRED
+  DISCONNECTED
+  DISABLED
+}
+
 enum PublicationStatus {
   DRAFT
   VALIDATING
@@ -36,46 +54,119 @@ enum CredentialStatus {
   EXPIRED
 }
 
+enum OAuthConnectionStatus {
+  ACTIVE
+  REAUTH_REQUIRED
+  REVOKED
+  ERROR
+}
+
+enum OAuthTokenStatus {
+  ACTIVE
+  SUPERSEDED
+  REVOKED
+  EXPIRED
+}
+
+enum MediaKind {
+  IMAGE
+  VIDEO
+}
+
+enum MediaSource {
+  UPLOAD
+  REMOTE_IMPORT
+  GENERATED
+}
+
+enum MediaAssetStatus {
+  PENDING_UPLOAD
+  UPLOADED
+  PROCESSING
+  READY
+  FAILED
+  DELETED
+}
+
+enum MediaVariantKind {
+  ORIGINAL
+  THUMBNAIL
+  PLATFORM_IMAGE
+  PLATFORM_VIDEO
+}
+
+enum MediaVariantStatus {
+  PENDING
+  PROCESSING
+  READY
+  FAILED
+  DELETED
+}
+
+enum OutboxEventStatus {
+  PENDING
+  PROCESSING
+  PUBLISHED
+  DEAD_LETTER
+}
+
+enum WebhookInboxStatus {
+  RECEIVED
+  PROCESSING
+  RETRY_WAITING
+  PROCESSED
+  IGNORED
+  DEAD_LETTER
+}
+
 model Workspace {
-  id            String          @id @default(uuid()) @db.Uuid
-  name          String
-  defaultLocale String          @default("zh-CN") @map("default_locale")
-  platformApps  PlatformApp[]
-  accounts      SocialAccount[]
-  contents      Content[]
-  publications  Publication[]
-  auditEvents   AuditEvent[]
-  createdAt     DateTime        @default(now()) @map("created_at")
-  updatedAt     DateTime        @updatedAt @map("updated_at")
+  id               String            @id @default(uuid()) @db.Uuid
+  name             String
+  defaultLocale    String            @default("zh-CN") @map("default_locale")
+  platformApps     PlatformApp[]
+  accounts         SocialAccount[]
+  oauthConnections OAuthConnection[]
+  contents         Content[]
+  publications     Publication[]
+  mediaAssets      MediaAsset[]
+  outboxEvents     OutboxEvent[]
+  webhookEvents    WebhookInbox[]
+  auditEvents      AuditEvent[]
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
 
   @@map("workspaces")
 }
 
 model PlatformApp {
-  id             String              @id @default(uuid()) @db.Uuid
-  workspaceId    String              @map("workspace_id") @db.Uuid
-  workspace      Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  platform       String
-  name           String
-  environment    String
-  publicClientId String              @map("public_client_id")
-  apiVersion     String?             @map("api_version")
-  redirectUri    String              @map("redirect_uri")
-  scopes         String[]
-  status         String
-  credentials    CredentialVersion[]
-  accounts       SocialAccount[]
-  createdAt      DateTime            @default(now()) @map("created_at")
-  updatedAt      DateTime            @updatedAt @map("updated_at")
+  id               String                @id @default(uuid()) @db.Uuid
+  workspaceId      String                @map("workspace_id") @db.Uuid
+  workspace        Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  platform         Platform
+  name             String
+  environment      DeploymentEnvironment
+  publicClientId   String                @map("public_client_id")
+  apiVersion       String?               @map("api_version")
+  redirectUri      String                @map("redirect_uri")
+  scopes           String[]
+  status           PlatformAppStatus
+  credentials      CredentialVersion[]
+  accounts         SocialAccount[]
+  oauthConnections OAuthConnection[]
+  webhookEvents    WebhookInbox[]
+  createdAt        DateTime              @default(now()) @map("created_at")
+  updatedAt        DateTime              @updatedAt @map("updated_at")
 
   @@unique([workspaceId, platform, name])
+  @@unique([workspaceId, id])
+  @@unique([workspaceId, id, platform])
   @@map("platform_apps")
 }
 
 model CredentialVersion {
   id              String               @id @default(uuid()) @db.Uuid
-  platformAppId   String?              @map("platform_app_id") @db.Uuid
-  platformApp     PlatformApp?         @relation(fields: [platformAppId], references: [id], onDelete: Cascade)
+  platformAppId   String               @map("platform_app_id") @db.Uuid
+  platformApp     PlatformApp          @relation(fields: [platformAppId], references: [id], onDelete: Cascade, onUpdate: Restrict)
   credentialType  String               @map("credential_type")
   versionNo       Int                  @map("version_no")
   ciphertext      Bytes
@@ -118,25 +209,81 @@ model AuditEvent {
 }
 
 model SocialAccount {
-  id             String        @id @default(uuid()) @db.Uuid
-  workspaceId    String        @map("workspace_id") @db.Uuid
-  workspace      Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  platformAppId  String        @map("platform_app_id") @db.Uuid
-  platformApp    PlatformApp   @relation(fields: [platformAppId], references: [id])
-  platform       Platform
-  remoteId       String        @map("remote_id")
-  displayName    String        @map("display_name")
-  username       String?
-  status         String
-  grantedScopes  String[]      @map("granted_scopes")
-  capabilities   Json
-  tokenExpiresAt DateTime?     @map("token_expires_at")
-  publications   Publication[]
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
+  id              String              @id @default(uuid()) @db.Uuid
+  workspaceId     String              @map("workspace_id") @db.Uuid
+  workspace       Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  platformAppId   String              @map("platform_app_id") @db.Uuid
+  platformApp     PlatformApp         @relation(fields: [workspaceId, platformAppId, platform], references: [workspaceId, id, platform])
+  platform        Platform
+  remoteId        String              @map("remote_id")
+  displayName     String              @map("display_name")
+  username        String?
+  status          SocialAccountStatus
+  capabilities    Json
+  publications    Publication[]
+  oauthConnection OAuthConnection?
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
 
   @@unique([workspaceId, platform, remoteId])
+  @@unique([workspaceId, id])
+  @@unique([workspaceId, id, platform])
+  @@unique([workspaceId, id, platformAppId])
   @@map("social_accounts")
+}
+
+model OAuthConnection {
+  id              String                @id @default(uuid()) @db.Uuid
+  workspaceId     String                @map("workspace_id") @db.Uuid
+  workspace       Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  platformAppId   String                @map("platform_app_id") @db.Uuid
+  platformApp     PlatformApp           @relation(fields: [workspaceId, platformAppId], references: [workspaceId, id])
+  socialAccountId String                @map("social_account_id") @db.Uuid
+  socialAccount   SocialAccount         @relation(fields: [workspaceId, socialAccountId, platformAppId], references: [workspaceId, id, platformAppId])
+  providerSubject String                @map("provider_subject")
+  status          OAuthConnectionStatus
+  grantedScopes   String[]              @map("granted_scopes")
+  tokenVersions   OAuthTokenVersion[]
+  createdAt       DateTime              @default(now()) @map("created_at")
+  updatedAt       DateTime              @updatedAt @map("updated_at")
+
+  @@unique([workspaceId, socialAccountId, platformAppId])
+  @@unique([workspaceId, platformAppId, providerSubject])
+  @@unique([workspaceId, platformAppId, id])
+  @@index([workspaceId, platformAppId, status])
+  @@map("oauth_connections")
+}
+
+model OAuthTokenVersion {
+  id                    String               @id @default(uuid()) @db.Uuid
+  workspaceId           String               @map("workspace_id") @db.Uuid
+  platformAppId         String               @map("platform_app_id") @db.Uuid
+  connectionId          String               @map("connection_id") @db.Uuid
+  connection            OAuthConnection      @relation(fields: [workspaceId, platformAppId, connectionId], references: [workspaceId, platformAppId, id], onDelete: Cascade, onUpdate: Restrict)
+  versionNo             Int                  @map("version_no")
+  status                OAuthTokenStatus
+  ciphertext            Bytes
+  encryptedDek          Bytes                @map("encrypted_dek")
+  envelopeVersion       Int                  @default(1) @map("envelope_version")
+  cipherSuite           String               @default("AES-256-GCM") @map("cipher_suite")
+  nonce                 Bytes
+  authTag               Bytes                @map("auth_tag")
+  kekVersion            String               @map("kek_version")
+  scopes                String[]
+  refreshable           Boolean
+  accessTokenExpiresAt  DateTime?            @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime?            @map("refresh_token_expires_at")
+  createdBy             String               @map("created_by")
+  createdAt             DateTime             @default(now()) @map("created_at")
+  supersededAt          DateTime?            @map("superseded_at")
+  revokedAt             DateTime?            @map("revoked_at")
+  revokedBy             String?              @map("revoked_by")
+  publicationAttempts   PublicationAttempt[]
+
+  @@unique([connectionId, versionNo])
+  @@index([workspaceId, platformAppId, status])
+  @@index([connectionId, status])
+  @@map("oauth_token_versions")
 }
 
 model Content {
@@ -148,13 +295,15 @@ model Content {
   createdAt   DateTime         @default(now()) @map("created_at")
   updatedAt   DateTime         @updatedAt @map("updated_at")
 
+  @@unique([workspaceId, id])
   @@map("contents")
 }
 
 model ContentVersion {
   id           String        @id @default(uuid()) @db.Uuid
+  workspaceId  String        @map("workspace_id") @db.Uuid
   contentId    String        @map("content_id") @db.Uuid
-  content      Content       @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  content      Content       @relation(fields: [workspaceId, contentId], references: [workspaceId, id], onDelete: Cascade)
   versionNo    Int           @map("version_no")
   sourceLocale String        @default("zh-CN") @map("source_locale")
   body         String
@@ -163,6 +312,7 @@ model ContentVersion {
   createdAt    DateTime      @default(now()) @map("created_at")
 
   @@unique([contentId, versionNo])
+  @@unique([workspaceId, id])
   @@map("content_versions")
 }
 
@@ -171,9 +321,9 @@ model Publication {
   workspaceId      String               @map("workspace_id") @db.Uuid
   workspace        Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   contentVersionId String               @map("content_version_id") @db.Uuid
-  contentVersion   ContentVersion       @relation(fields: [contentVersionId], references: [id])
+  contentVersion   ContentVersion       @relation(fields: [workspaceId, contentVersionId], references: [workspaceId, id])
   socialAccountId  String               @map("social_account_id") @db.Uuid
-  socialAccount    SocialAccount        @relation(fields: [socialAccountId], references: [id])
+  socialAccount    SocialAccount        @relation(fields: [workspaceId, socialAccountId, platform], references: [workspaceId, id, platform])
   platform         Platform
   status           PublicationStatus
   idempotencyKey   String               @map("idempotency_key")
@@ -185,32 +335,181 @@ model Publication {
   remotePostUrl    String?              @map("remote_post_url")
   publishedAt      DateTime?            @map("published_at")
   attempts         PublicationAttempt[]
+  media            PublicationMedia[]
   createdAt        DateTime             @default(now()) @map("created_at")
   updatedAt        DateTime             @updatedAt @map("updated_at")
 
   @@unique([workspaceId, idempotencyKey])
   @@unique([platform, socialAccountId, remotePostId])
+  @@unique([workspaceId, id])
   @@index([status, scheduledAt])
   @@map("publications")
 }
 
 model PublicationAttempt {
-  id                  String            @id @default(uuid()) @db.Uuid
-  publicationId       String            @map("publication_id") @db.Uuid
-  publication         Publication       @relation(fields: [publicationId], references: [id], onDelete: Cascade)
-  credentialVersionId String            @map("credential_version_id") @db.Uuid
-  credentialVersion   CredentialVersion @relation(fields: [credentialVersionId], references: [id])
-  attemptNo           Int               @map("attempt_no")
+  id                  String             @id @default(uuid()) @db.Uuid
+  publicationId       String             @map("publication_id") @db.Uuid
+  publication         Publication        @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+  credentialVersionId String?            @map("credential_version_id") @db.Uuid
+  credentialVersion   CredentialVersion? @relation(fields: [credentialVersionId], references: [id], onDelete: Restrict)
+  oauthTokenVersionId String?            @map("oauth_token_version_id") @db.Uuid
+  oauthTokenVersion   OAuthTokenVersion? @relation(fields: [oauthTokenVersionId], references: [id], onDelete: Restrict)
+  attemptNo           Int                @map("attempt_no")
   stage               String
   status              String
-  traceId             String            @map("trace_id")
-  platformRequestId   String?           @map("platform_request_id")
-  httpStatus          Int?              @map("http_status")
-  errorCode           String?           @map("error_code")
-  errorClass          String?           @map("error_class")
-  startedAt           DateTime          @map("started_at")
-  finishedAt          DateTime?         @map("finished_at")
+  traceId             String             @map("trace_id")
+  platformRequestId   String?            @map("platform_request_id")
+  httpStatus          Int?               @map("http_status")
+  errorCode           String?            @map("error_code")
+  errorClass          String?            @map("error_class")
+  startedAt           DateTime           @map("started_at")
+  finishedAt          DateTime?          @map("finished_at")
 
   @@unique([publicationId, attemptNo, stage])
+  @@index([oauthTokenVersionId])
   @@map("publication_attempts")
+}
+
+model MediaAsset {
+  id               String             @id @default(uuid()) @db.Uuid
+  workspaceId      String             @map("workspace_id") @db.Uuid
+  workspace        Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  kind             MediaKind
+  source           MediaSource
+  status           MediaAssetStatus
+  originalFilename String?            @map("original_filename")
+  storageProvider  String             @map("storage_provider")
+  storageBucket    String             @map("storage_bucket")
+  storageKey       String             @map("storage_key")
+  mimeType         String             @map("mime_type")
+  sizeBytes        BigInt             @map("size_bytes")
+  checksumSha256   String             @map("checksum_sha256")
+  width            Int?
+  height           Int?
+  durationMs       Int?               @map("duration_ms")
+  failureCode      String?            @map("failure_code")
+  createdBy        String             @map("created_by")
+  variants         MediaVariant[]
+  publications     PublicationMedia[]
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+  deletedAt        DateTime?          @map("deleted_at")
+
+  @@unique([workspaceId, id])
+  @@unique([workspaceId, storageBucket, storageKey])
+  @@index([workspaceId, checksumSha256])
+  @@index([workspaceId, status, createdAt])
+  @@map("media_assets")
+}
+
+model MediaVariant {
+  id              String             @id @default(uuid()) @db.Uuid
+  workspaceId     String             @map("workspace_id") @db.Uuid
+  mediaAssetId    String             @map("media_asset_id") @db.Uuid
+  mediaAsset      MediaAsset         @relation(fields: [workspaceId, mediaAssetId], references: [workspaceId, id], onDelete: Cascade)
+  platform        Platform?
+  kind            MediaVariantKind
+  profile         String
+  status          MediaVariantStatus
+  storageProvider String             @map("storage_provider")
+  storageBucket   String             @map("storage_bucket")
+  storageKey      String             @map("storage_key")
+  mimeType        String             @map("mime_type")
+  sizeBytes       BigInt             @map("size_bytes")
+  checksumSha256  String             @map("checksum_sha256")
+  width           Int?
+  height          Int?
+  durationMs      Int?               @map("duration_ms")
+  transformation  Json
+  failureCode     String?            @map("failure_code")
+  publications    PublicationMedia[]
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+  deletedAt       DateTime?          @map("deleted_at")
+
+  @@unique([workspaceId, id, mediaAssetId])
+  @@unique([workspaceId, mediaAssetId, profile])
+  @@unique([workspaceId, storageBucket, storageKey])
+  @@index([workspaceId, mediaAssetId, status])
+  @@map("media_variants")
+}
+
+model PublicationMedia {
+  id                String        @id @default(uuid()) @db.Uuid
+  workspaceId       String        @map("workspace_id") @db.Uuid
+  publicationId     String        @map("publication_id") @db.Uuid
+  publication       Publication   @relation(fields: [workspaceId, publicationId], references: [workspaceId, id], onDelete: Cascade)
+  mediaAssetId      String        @map("media_asset_id") @db.Uuid
+  mediaAsset        MediaAsset    @relation(fields: [workspaceId, mediaAssetId], references: [workspaceId, id])
+  mediaVariantId    String?       @map("media_variant_id") @db.Uuid
+  mediaVariant      MediaVariant? @relation(fields: [workspaceId, mediaVariantId, mediaAssetId], references: [workspaceId, id, mediaAssetId])
+  position          Int
+  role              String
+  altText           String?       @map("alt_text")
+  remoteMediaId     String?       @map("remote_media_id")
+  remoteContainerId String?       @map("remote_container_id")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  @@unique([publicationId, position])
+  @@index([workspaceId, mediaAssetId])
+  @@map("publication_media")
+}
+
+model OutboxEvent {
+  id               String            @id @default(uuid()) @db.Uuid
+  workspaceId      String            @map("workspace_id") @db.Uuid
+  workspace        Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  aggregateType    String            @map("aggregate_type")
+  aggregateId      String            @map("aggregate_id")
+  aggregateVersion Int?              @map("aggregate_version")
+  eventType        String            @map("event_type")
+  schemaVersion    Int               @default(1) @map("schema_version")
+  deduplicationKey String            @map("deduplication_key")
+  traceId          String?           @map("trace_id")
+  payload          Json
+  status           OutboxEventStatus @default(PENDING)
+  attempts         Int               @default(0)
+  occurredAt       DateTime          @default(now()) @map("occurred_at")
+  availableAt      DateTime          @default(now()) @map("available_at")
+  lockedUntil      DateTime?         @map("locked_until")
+  lockedBy         String?           @map("locked_by")
+  publishedAt      DateTime?         @map("published_at")
+  lastErrorCode    String?           @map("last_error_code")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+
+  @@unique([workspaceId, deduplicationKey])
+  @@index([status, availableAt, lockedUntil])
+  @@index([workspaceId, aggregateType, aggregateId, createdAt])
+  @@map("outbox_events")
+}
+
+model WebhookInbox {
+  id                  String             @id @default(uuid()) @db.Uuid
+  workspaceId         String             @map("workspace_id") @db.Uuid
+  workspace           Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  platformAppId       String             @map("platform_app_id") @db.Uuid
+  platform            Platform
+  platformApp         PlatformApp        @relation(fields: [workspaceId, platformAppId, platform], references: [workspaceId, id, platform], onDelete: Cascade)
+  providerEventId     String             @map("provider_event_id")
+  eventType           String             @map("event_type")
+  signatureAlgorithm  String             @map("signature_algorithm")
+  signatureVerifiedAt DateTime           @map("signature_verified_at")
+  payload             Json
+  status              WebhookInboxStatus @default(RECEIVED)
+  attempts            Int                @default(0)
+  receivedAt          DateTime           @default(now()) @map("received_at")
+  availableAt         DateTime           @default(now()) @map("available_at")
+  lockedUntil         DateTime?          @map("locked_until")
+  lockedBy            String?            @map("locked_by")
+  processedAt         DateTime?          @map("processed_at")
+  lastErrorCode       String?            @map("last_error_code")
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
+
+  @@unique([workspaceId, platformAppId, providerEventId])
+  @@index([status, availableAt, lockedUntil])
+  @@index([workspaceId, platform, receivedAt])
+  @@map("webhook_inbox")
 }

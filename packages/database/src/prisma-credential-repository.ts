@@ -86,7 +86,7 @@ export class PrismaCredentialVersionRepository implements CredentialVersionRepos
     if (!record) return null;
     return {
       ...toMetadata(record),
-      workspaceId: record.platformApp?.workspaceId ?? workspaceId,
+      workspaceId: record.platformApp.workspaceId,
       envelope: toEnvelope(record),
     };
   }
@@ -124,7 +124,7 @@ export class PrismaCredentialVersionRepository implements CredentialVersionRepos
           targetId: existing.id,
           requestId,
           metadata: {
-            platformAppId: existing.platformAppId ?? 'none',
+            platformAppId: existing.platformAppId,
             credentialType: existing.credentialType,
             versionNo: existing.versionNo,
           },
@@ -149,7 +149,7 @@ async function lockCredentialStream(
 function toMetadata(record: CredentialVersion): CredentialMetadata {
   return {
     id: record.id,
-    platformAppId: record.platformAppId ?? '',
+    platformAppId: record.platformAppId,
     credentialType: record.credentialType,
     versionNo: record.versionNo,
     status: mapStatus(record.status),
