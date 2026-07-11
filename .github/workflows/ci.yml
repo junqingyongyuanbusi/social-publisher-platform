@@ -61,6 +61,7 @@ jobs:
       - name: Validate Keycloak realm and discovery
         run: |
           trap 'docker compose down --volumes' EXIT
+          export POSTGRES_PASSWORD="$(openssl rand -hex 24)"
           export KEYCLOAK_DB_PASSWORD="$(openssl rand -hex 24)"
           export KEYCLOAK_ADMIN_PASSWORD="$(openssl rand -hex 24)"
           export KEYCLOAK_OWNER_PASSWORD="$(openssl rand -hex 24)"
