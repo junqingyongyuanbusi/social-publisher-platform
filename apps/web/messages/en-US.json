@@ -71,6 +71,7 @@
     "workspace": "Workspace",
     "connect": "Connect a platform app",
     "authorize": "Authorize with X",
+    "authorizePlatform": "Connect {platform}",
     "comingSoon": "Next integration",
     "connected": "Connected accounts",
     "empty": "No social account is connected in this workspace.",

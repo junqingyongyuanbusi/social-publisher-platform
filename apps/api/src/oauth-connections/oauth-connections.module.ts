@@ -25,6 +25,7 @@ import {
   PrismaOAuthTokenVersionRepository,
 } from '@social/database';
 import { XOAuthClient } from '@social/platform-x';
+import { MetaGraphClient } from '@social/platform-facebook';
 import Redis from 'ioredis';
 import { z } from 'zod';
 import { RequirePermission } from '../auth/auth.decorators.js';
@@ -113,7 +114,6 @@ class OAuthConnectionsService {
 
   async connect(workspaceId: string, platformAppId: string, actorId: string, returnTo: string) {
     const app = await this.app(workspaceId, platformAppId);
-    if (app.platform !== 'X') throw new Error('platform_oauth_not_implemented');
     const tx = await this.transactions.create({
       workspaceId,
       platformAppId,
@@ -121,6 +121,14 @@ class OAuthConnectionsService {
       verifier: '',
       returnTo: safeReturnTo(returnTo),
     });
+    if (app.platform !== 'X')
+      return this.withMetaClient(app, (client) => ({
+        authorizationUrl: client.authorizationUrl(
+          tx.state,
+          requiredMetaScopes(app.platform, app.scopes)
+        ),
+        expiresIn: 600,
+      }));
     const client = new XOAuthClient({ clientId: app.publicClientId, redirectUri: app.redirectUri });
     return {
       authorizationUrl: client.authorizationUrl({
@@ -137,6 +145,7 @@ class OAuthConnectionsService {
     const tx = await this.transactions.take(parsed.state);
     if (!tx || tx.actorId !== actorId) throw new Error('oauth_transaction_invalid');
     const app = await this.app(tx.workspaceId, tx.platformAppId);
+    if (app.platform !== 'X') return this.completeMeta(tx, app, parsed.code, actorId, requestId);
     const result = await this.withClient(app, (client) =>
       client.exchangeCode(parsed.code, tx.verifier)
     );
@@ -221,6 +230,122 @@ class OAuthConnectionsService {
     };
   }
 
+  private async completeMeta(
+    tx: OAuthTransaction,
+    app: Awaited<ReturnType<OAuthConnectionsService['app']>>,
+    code: string,
+    actorId: string,
+    requestId: string
+  ) {
+    return this.withMetaClient(app, async (client) => {
+      const short = await client.exchangeCode(code);
+      const grant = await client.exchangeLongLived(short.accessToken);
+      const pages = await client.pages(grant.accessToken);
+      const discovered =
+        app.platform === 'FACEBOOK'
+          ? pages.map((page) => ({
+              remoteId: page.id,
+              displayName: page.name,
+              username: null,
+              token: page.accessToken,
+              capabilities: { text: true, image: true, video: true },
+              providerSubject: page.id,
+            }))
+          : pages.flatMap((page) =>
+              page.instagramAccount
+                ? [
+                    {
+                      remoteId: page.instagramAccount.id,
+                      displayName:
+                        page.instagramAccount.name ?? page.instagramAccount.username ?? page.name,
+                      username: page.instagramAccount.username ?? null,
+                      token: page.accessToken,
+                      capabilities: { image: true, carousel: true, reels: true },
+                      providerSubject: page.instagramAccount.id,
+                    },
+                  ]
+                : []
+            );
+      if (!discovered.length) throw new Error('meta_publishable_account_not_found');
+      const accounts = [];
+      for (const item of discovered) {
+        const connection = await this.prisma.$transaction(async (database) => {
+          const account = await database.socialAccount.upsert({
+            where: {
+              workspaceId_platform_remoteId: {
+                workspaceId: tx.workspaceId,
+                platform: app.platform,
+                remoteId: item.remoteId,
+              },
+            },
+            create: {
+              workspaceId: tx.workspaceId,
+              platformAppId: app.id,
+              platform: app.platform,
+              remoteId: item.remoteId,
+              displayName: item.displayName,
+              username: item.username,
+              status: 'ACTIVE',
+              capabilities: item.capabilities,
+            },
+            update: {
+              platformAppId: app.id,
+              displayName: item.displayName,
+              username: item.username,
+              status: 'ACTIVE',
+              capabilities: item.capabilities,
+            },
+          });
+          return database.oAuthConnection.upsert({
+            where: {
+              workspaceId_socialAccountId_platformAppId: {
+                workspaceId: tx.workspaceId,
+                socialAccountId: account.id,
+                platformAppId: app.id,
+              },
+            },
+            create: {
+              workspaceId: tx.workspaceId,
+              platformAppId: app.id,
+              socialAccountId: account.id,
+              providerSubject: item.providerSubject,
+              status: 'ERROR',
+              grantedScopes: [...requiredMetaScopes(app.platform, app.scopes)],
+            },
+            update: {
+              providerSubject: item.providerSubject,
+              status: 'ERROR',
+              grantedScopes: [...requiredMetaScopes(app.platform, app.scopes)],
+            },
+          });
+        });
+        const bundle = Buffer.from(
+          JSON.stringify({ accessToken: item.token, refreshToken: null, tokenType: 'bearer' })
+        );
+        await this.tokens.put({
+          workspaceId: tx.workspaceId,
+          platformAppId: app.id,
+          connectionId: connection.id,
+          tokenBundle: bundle,
+          scopes: requiredMetaScopes(app.platform, app.scopes),
+          accessTokenExpiresAt: new Date(Date.now() + grant.expiresIn * 1000).toISOString(),
+          refreshTokenExpiresAt: null,
+          refreshable: false,
+          actorId,
+          requestId,
+        });
+        accounts.push({
+          id: connection.socialAccountId,
+          platform: app.platform,
+          displayName: item.displayName,
+          username: item.username,
+          status: 'ACTIVE',
+        });
+      }
+      return { returnTo: tx.returnTo, accounts };
+    });
+  }
+
   async disconnect(workspaceId: string, connectionId: string, actorId: string, requestId: string) {
     const connection = await this.prisma.oAuthConnection.findFirst({
       where: { id: connectionId, workspaceId },
@@ -230,9 +355,14 @@ class OAuthConnectionsService {
     await this.tokens.withDecryptedTokenBundle(workspaceId, connectionId, async (bytes) => {
       const parsed = JSON.parse(Buffer.from(bytes).toString('utf8')) as { accessToken?: unknown };
       if (typeof parsed.accessToken !== 'string') throw new Error('oauth_token_bundle_invalid');
-      await this.withClient(connection.platformApp, (client) =>
-        client.revoke(parsed.accessToken as string)
-      );
+      if (connection.platformApp.platform === 'X')
+        await this.withClient(connection.platformApp, (client) =>
+          client.revoke(parsed.accessToken as string)
+        );
+      else
+        await this.withMetaClient(connection.platformApp, (client) =>
+          client.revoke(parsed.accessToken as string)
+        );
     });
     await this.tokens.revoke(workspaceId, connectionId, actorId, requestId);
     await this.prisma.socialAccount.update({
@@ -268,6 +398,33 @@ class OAuthConnectionsService {
           redirectUri: app.redirectUri,
         })
       )
+    );
+  }
+  private withMetaClient<T>(
+    app: Awaited<ReturnType<OAuthConnectionsService['app']>>,
+    operation: (client: MetaGraphClient) => Promise<T> | T
+  ): Promise<T> {
+    return this.withAppSecret(app, (secret) =>
+      operation(
+        new MetaGraphClient({
+          clientId: app.publicClientId,
+          clientSecret: secret,
+          redirectUri: app.redirectUri,
+          apiVersion: app.apiVersion ?? 'v23.0',
+        })
+      )
+    );
+  }
+  private async withAppSecret<T>(
+    app: Awaited<ReturnType<OAuthConnectionsService['app']>>,
+    operation: (secret: string) => Promise<T> | T
+  ): Promise<T> {
+    const active = (await this.credentials.list(app.workspaceId, app.id)).find(
+      (item) => item.credentialType === 'app_secret' && item.status === 'ACTIVE'
+    );
+    if (!active) throw new Error('platform_app_secret_required');
+    return this.credentials.withDecryptedCredential(app.workspaceId, active.id, (bytes) =>
+      Promise.resolve(operation(Buffer.from(bytes).toString('utf8')))
     );
   }
 }
@@ -367,6 +524,16 @@ function requiredXScopes(scopes: readonly string[]): readonly string[] {
       'media.write',
     ]),
   ];
+}
+function requiredMetaScopes(
+  platform: 'FACEBOOK' | 'INSTAGRAM' | 'X',
+  scopes: readonly string[]
+): readonly string[] {
+  const required =
+    platform === 'INSTAGRAM'
+      ? ['pages_show_list', 'pages_read_engagement', 'instagram_basic', 'instagram_content_publish']
+      : ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts'];
+  return [...new Set([...scopes, ...required])];
 }
 function keyProvider(): KeyEncryptionKeyProvider {
   if ((process.env['CREDENTIAL_KEK_PROVIDER'] ?? 'local') === 'aws-kms')

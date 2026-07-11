@@ -111,12 +111,8 @@ export function AccountManager() {
                 <strong>{app.platform}</strong>
                 <small>{app.name}</small>
               </div>
-              <button
-                className="button"
-                disabled={busy || app.platform !== 'X'}
-                onClick={() => void connect(app.id)}
-              >
-                {app.platform === 'X' ? t('authorize') : t('comingSoon')}
+              <button className="button" disabled={busy} onClick={() => void connect(app.id)}>
+                {t('authorizePlatform', { platform: app.platform })}
               </button>
             </div>
           ))}

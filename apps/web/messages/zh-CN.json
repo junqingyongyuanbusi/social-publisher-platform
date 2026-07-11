@@ -68,6 +68,7 @@
     "workspace": "工作区",
     "connect": "连接平台应用",
     "authorize": "使用 X 授权",
+    "authorizePlatform": "连接 {platform}",
     "comingSoon": "下一阶段接入",
     "connected": "已连接账号",
     "empty": "当前工作区还没有连接社媒账号。",
